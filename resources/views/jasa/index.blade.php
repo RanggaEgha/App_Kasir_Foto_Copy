@@ -20,7 +20,7 @@
             <th>Satuan</th>
             <th>Harga / Satuan</th>
             <th>Keterangan</th>
-            <th>Aksi</th>
+            <th style="width: 150px">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -28,10 +28,10 @@
           <tr>
             <td>{{ $index + 1 }}</td>
             <td>{{ $jasa->nama }}</td>
-            <td>{{ $jasa->jenis }}</td>
+            <td>{{ $jasa->jenis ?? '-' }}</td>
             <td>{{ $jasa->satuan }}</td>
             <td>Rp{{ number_format($jasa->harga_per_satuan, 0, ',', '.') }}</td>
-            <td>{{ $jasa->keterangan }}</td>
+            <td>{{ $jasa->keterangan ?? '-' }}</td>
             <td>
               <a href="{{ route('jasa.edit', $jasa->id) }}" class="btn btn-warning btn-sm">Edit</a>
               <form action="{{ route('jasa.destroy', $jasa->id) }}" method="POST" class="d-inline">

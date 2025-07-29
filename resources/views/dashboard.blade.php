@@ -35,7 +35,7 @@
     <div class="card-body p-0">
       <table class="table table-sm mb-0">
         <thead class="table-light">
-          <tr><th>#</th><th>Nama</th><th>Qty</th><th>Omset</th></tr>
+          <tr><th>#</th><th>Nama</th><th>Qty</th><th>Omzet</th></tr>
         </thead>
         <tbody>
           @foreach($topItems as $i=>$t)
@@ -53,22 +53,25 @@
 
   {{-- Stok kritis --}}
   <div class="card">
-    <div class="card-header">Stok Hampir Habis (≤ 50 pcs / ≤ 2 paket)</div>
+    <div class="card-header">Stok Hampir Habis (≤ 50 pcs / ≤ 2 pack)</div>
     <div class="card-body p-0">
       <table class="table table-sm mb-0">
         <thead class="table-light">
-          <tr><th>#</th><th>Nama</th><th>Pcs</th><th>Paket</th></tr>
+          <tr><th>#</th><th>Nama</th><th>Pcs</th><th>Pack</th></tr>
         </thead>
         <tbody>
+          @php
+            $stok = fn($b,$kode)=> optional($b->units->firstWhere('kode',$kode))->pivot->stok ?? '—';
+          @endphp
           @forelse($stokKritis as $i=>$b)
             <tr>
               <td>{{ $i+1 }}</td>
               <td>{{ $b->nama }}</td>
-              <td>{{ $b->stok_satuan }}</td>
-              <td>{{ $b->stok_paket }}</td>
+              <td>{{ $stok($b,'pcs') }}</td>
+              <td>{{ $stok($b,'pack') }}</td>
             </tr>
           @empty
-            <tr><td colspan="4" class="text-center">Semua stok aman</td></tr>
+            <tr><td colspan="4" class="text-center py-3">Semua stok aman</td></tr>
           @endforelse
         </tbody>
       </table>

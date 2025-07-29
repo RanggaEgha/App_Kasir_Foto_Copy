@@ -49,6 +49,23 @@
   </a>
 </li>
 
+{{-- === BLOK MASTER DATA BARU === --}}
+<li class="nav-title mt-3">MASTER DATA</li>
+<li class="nav-item">
+   <a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}"
+      href="{{ route('suppliers.index') }}">
+      <i class="nav-icon bi bi-truck"></i> Supplier
+   </a>
+</li>
+<li class="nav-title mt-3">PEMBELIAN</li>
+<li class="nav-item">
+  <a class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
+     href="{{ route('purchases.index') }}">
+     <i class="bi bi-bag-plus"></i> Purchase Order
+  </a>
+</li>
+
+
     <li class="nav-title">Lainnya</li>
 
     <li class="nav-item">

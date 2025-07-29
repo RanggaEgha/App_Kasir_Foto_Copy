@@ -1,70 +1,90 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\Barang;
+use App\Models\{Barang, Unit};
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 
 class BarangController extends Controller
 {
+    /* ---------- LIST ---------- */
     public function index()
     {
-        $barangs = Barang::all();
+        $barangs = Barang::with('units')->latest()->paginate(15);
         return view('barang.index', compact('barangs'));
     }
 
+    /* ---------- CREATE ---------- */
     public function create()
     {
-        return view('barang.create');
+        $units = Unit::all();                 // pcs | pack | lusin
+        return view('barang.create', compact('units'));
     }
 
-    public function update(Request $request, $id)
+    /* ---------- STORE ---------- */
+    public function store(Request $r)
     {
-        $request->validate([
-            'nama' => 'required',
-            'kategori' => 'required',
-            'satuan' => 'required',
-            'stok_satuan' => 'required|numeric',
-            'stok_paket' => 'required|numeric',
-            'isi_per_paket' => 'nullable|numeric',
-            'harga_satuan' => 'required|numeric',
-            'harga_paket' => 'nullable|numeric',
+        $data = $r->validate([
+            'nama'      => 'required|string|max:100',
+            'kategori'  => 'nullable|string|max:50',
+            'keterangan'=> 'nullable|string',
+            'units'     => 'required|array|min:1',
+            'units.*'   => 'exists:units,id',
+            'stok'      => 'required|array',
+            'harga'     => 'required|array',
         ]);
 
-        Barang::findOrFail($id)->update($request->all());
+        $barang = Barang::create($data);
 
-        return redirect()->route('barang.index')->with('success', 'Barang berhasil diperbarui.');
+        /* simpan pivot */
+        foreach ($data['units'] as $unitId) {
+            $barang->units()->attach($unitId, [
+                'stok' => $data['stok'][$unitId] ?? 0,
+                'harga'=> $data['harga'][$unitId] ?? 0,
+            ]);
+        }
+        return to_route('barang.index')->with('success','Barang ditambahkan');
     }
 
-     public function edit($id)
+    /* ---------- EDIT ---------- */
+    public function edit(Barang $barang)
     {
-        $barang = Barang::findOrFail($id);
-        return view('barang.edit', compact('barang'));
+        $barang->load('units');
+        $units = Unit::all();
+        return view('barang.edit', compact('barang','units'));
     }
 
-
-
-      public function destroy($id)
+    /* ---------- UPDATE ---------- */
+    public function update(Request $r, Barang $barang)
     {
-        Barang::destroy($id);
-        return redirect()->route('barang.index')->with('success', 'Barang berhasil dihapus.');
+        $data = $r->validate([
+            'nama'      => 'required|string|max:100',
+            'kategori'  => 'nullable|string|max:50',
+            'keterangan'=> 'nullable|string',
+            'units'     => 'required|array|min:1',
+            'units.*'   => 'exists:units,id',
+            'stok'      => 'required|array',
+            'harga'     => 'required|array',
+        ]);
+
+        $barang->update($data);
+
+        /* sinkron pivot (detach & attach ulang) */
+        $sync = [];
+        foreach ($data['units'] as $unitId) {
+            $sync[$unitId] = [
+                'stok'  => $data['stok'][$unitId] ?? 0,
+                'harga' => $data['harga'][$unitId] ?? 0,
+            ];
+        }
+        $barang->units()->sync($sync);
+
+        return to_route('barang.index')->with('success','Barang diperbarui');
     }
 
-    public function store(Request $request)
-{
-    $request->validate([
-        'nama' => 'required',
-        'tipe_penjualan' => 'required',
-        'harga_satuan' => 'nullable|integer',
-        'harga_paket' => 'nullable|integer',
-        'isi_per_paket' => 'nullable|integer',
-        'stok_satuan' => 'nullable|integer',
-        'stok_paket' => 'nullable|integer',
-    ]);
-
-    Barang::create($request->all());
-
-    return redirect()->route('barang.index')->with('success', 'Barang berhasil ditambahkan.');
-}
-
+    /* ---------- DELETE ---------- */
+    public function destroy(Barang $barang)
+    {
+        $barang->delete();
+        return back()->with('success','Barang dihapus');
+    }
 }

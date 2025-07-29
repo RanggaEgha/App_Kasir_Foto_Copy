@@ -5,7 +5,9 @@ use App\Http\Controllers\{
     DashboardController,
     BarangController,
     JasaController,
-    TransaksiController
+    TransaksiController,
+    SupplierController,
+    PurchaseOrderController
 };
 
 /* ───── Dashboard ───── */
@@ -23,3 +25,10 @@ Route::put ('/barang/{id}/units',  [BarangController::class,'updateUnits'])->nam
 /* ───── Transaksi (resource + PDF) ───── */
 Route::resource('transaksi', TransaksiController::class);
 Route::get('/transaksi/{id}/pdf', [TransaksiController::class,'pdf'])->name('transaksi.pdf');
+
+
+
+/* ───── Supplier (tanpa auth) ───── */
+Route::resource('suppliers', SupplierController::class);
+Route::resource('purchases', PurchaseOrderController::class);
+

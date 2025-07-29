@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class Jasa extends Model
 {
     use HasFactory;
-    protected $fillable = ['nama', 'jenis', 'satuan', 'harga_per_satuan', 'keterangan'];
 
+    // kolom yang memang ada di tabel `jasas`
+    protected $fillable = [
+        'nama',
+        'jenis',
+        'satuan',
+        'harga_per_satuan',
+        'keterangan',
+    ];
 }

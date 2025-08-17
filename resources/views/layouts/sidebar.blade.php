@@ -14,59 +14,90 @@
   </div>
 
   <ul class="sidebar-nav" data-coreui="navigation" data-simplebar="">
+
+    {{-- DASHBOARD --}}
     <li class="nav-item">
-      <a class="nav-link" href="#">
+      <a class="nav-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}" href="{{ route('dashboard') }}">
         <svg class="nav-icon">
           <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-speedometer') }}"></use>
         </svg> Dashboard
       </a>
     </li>
 
-    <li class="nav-title">Kasir</li>
+    {{-- PRODUK & JASA (di atas Transaksi) --}}
+    <li class="nav-title mt-3">Produk &amp; Jasa</li>
 
     <li class="nav-item">
-      <a class="nav-link" href="{{ route('barang.index') }}">
+      <a class="nav-link {{ request()->routeIs('barang.*') ? 'active' : '' }}"
+         href="{{ route('barang.index') }}">
         <svg class="nav-icon">
           <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-cart') }}"></use>
         </svg> Data Barang
       </a>
     </li>
 
-<li class="nav-item">
-  <a class="nav-link" href="{{ route('jasa.index') }}">
-    <svg class="nav-icon">
-      <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-clipboard') }}"></use>
-    </svg> Data Jasa
-  </a>
-</li>
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('jasa.*') ? 'active' : '' }}"
+         href="{{ route('jasa.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-clipboard') }}"></use>
+        </svg> Data Jasa
+      </a>
+    </li>
 
+    {{-- TRANSAKSI --}}
+    <li class="nav-title mt-3">Transaksi</li>
 
-   <li class="nav-item">
-  <a class="nav-link" href="{{ route('transaksi.index') }}">
-    <svg class="nav-icon">
-      <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-cash') }}"></use>
-    </svg> Transaksi
-  </a>
-</li>
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('pembayaran.*') ? 'active' : '' }}"
+         href="{{ route('pembayaran.create') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-calculator') }}"></use>
+        </svg> Pembayaran
+      </a>
+    </li>
 
-{{-- === BLOK MASTER DATA BARU === --}}
-<li class="nav-title mt-3">MASTER DATA</li>
-<li class="nav-item">
-   <a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}"
-      href="{{ route('suppliers.index') }}">
-      <i class="nav-icon bi bi-truck"></i> Supplier
-   </a>
-</li>
-<li class="nav-title mt-3">PEMBELIAN</li>
-<li class="nav-item">
-  <a class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
-     href="{{ route('purchases.index') }}">
-     <i class="bi bi-bag-plus"></i> Purchase Order
-  </a>
-</li>
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('history.*') ? 'active' : '' }}"
+         href="{{ route('history.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-history') }}"></use>
+        </svg> History Transaksi
+      </a>
+    </li>
 
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('shift.*') ? 'active' : '' }}"
+         href="{{ route('shift.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-cash') }}"></use>
+        </svg> Shift Kasir
+      </a>
+    </li>
 
-    <li class="nav-title">Lainnya</li>
+    {{-- PEMBELIAN --}}
+    <li class="nav-title mt-3">Pembelian</li>
+
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}"
+         href="{{ route('suppliers.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-truck') }}"></use>
+        </svg> Supplier
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
+         href="{{ route('purchases.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-basket') }}"></use>
+        </svg> Purchase Order
+      </a>
+    </li>
+
+    {{-- LAINNYA --}}
+    <li class="nav-title mt-3">Lainnya</li>
 
     <li class="nav-item">
       <a class="nav-link" href="#">
@@ -76,13 +107,20 @@
       </a>
     </li>
 
+    {{-- LOGOUT --}}
     <li class="nav-item mt-auto">
-      <a class="nav-link" href="#">
+      <a href="#"
+         class="nav-link text-danger"
+         onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
         <svg class="nav-icon">
           <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-account-logout') }}"></use>
-        </svg> Keluar
+        </svg> Logout
       </a>
+      <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+        @csrf
+      </form>
     </li>
+
   </ul>
 
   <div class="sidebar-footer border-top d-none d-md-flex">

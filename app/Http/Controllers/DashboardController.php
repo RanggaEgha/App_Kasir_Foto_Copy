@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;        // ← yang benar
+use App\Exports\DashboardExport;
+use App\Models\PurchaseOrder;
+use App\Models\Supplier;
 use App\Models\{Transaksi, TransaksiItem, Barang};
 
 class DashboardController extends Controller
@@ -54,17 +59,44 @@ class DashboardController extends Controller
         $packLimit = 2;    // ≤ 2 pack
 
         return Barang::with('units')        // eager-load
-            ->whereHas('units', function ($u) use ($pcsLimit, $packLimit) {
-                $u->where(function ($q) use ($pcsLimit) {
-                        $q->where('units.kode', 'pcs')
-                          ->where('barang_unit_prices.stok', '<=', $pcsLimit);
-                    })
-                  ->orWhere(function ($q) use ($packLimit) {
-                        $q->where('units.kode', 'pack')
-                          ->where('barang_unit_prices.stok', '<=', $packLimit);
-                    });
-            })
+           ->whereHas('units', function ($u) use ($pcsLimit, $packLimit) {
+    $u->where(function ($q) use ($pcsLimit) {
+            $q->where('units.kode', 'pcs')
+              ->where('barang_unit_prices.stok', '<=', $pcsLimit);
+        })
+      ->orWhere(function ($q) use ($packLimit) {
+            $q->where('units.kode', 'paket') // <— ganti 'pack' menjadi 'paket'
+              ->where('barang_unit_prices.stok', '<=', $packLimit);
+        });
+})
+
             ->get()
             ->sortBy(fn ($b) => $b->stokPcs());   // method di model Barang
     }
+    public function pdf()
+{
+    // pakai helper existing agar konsisten dgn halaman dashboard
+    [$harian, $mingguan] = $this->ringkasOmzet();
+    $topItems   = $this->topItems();
+    $stokKritis = $this->stokKritis(); // sudah include with('units')
+
+    return Pdf::loadView('dashboard_pdf', compact('harian','mingguan','topItems','stokKritis'))
+              ->setPaper('A4','portrait')
+              ->stream('dashboard.pdf');
+}
+ public function excel()
+{
+    // Ambil data persis seperti di dashboard
+    [$harian, $mingguan] = $this->ringkasOmzet();
+    $topItems   = $this->topItems();
+    $stokKritis = $this->stokKritis(); // sudah with('units')
+
+    // Cocokkan signature DashboardExport(harian, mingguan, topItems, stokKritis)
+    return Excel::download(
+        new DashboardExport($harian, $mingguan, $topItems, $stokKritis),
+        'dashboard.xlsx'
+    );
+}
+
+
 }

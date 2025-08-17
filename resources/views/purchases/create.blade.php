@@ -1,167 +1,165 @@
 @extends('layouts.app')
-@section('title','Tambah Purchase Order')
 
 @section('content')
-<form action="{{ route('purchases.store') }}" method="POST" id="poForm">
- @csrf
+<div class="card">
+  <div class="card-header">Tambah Purchase Order</div>
+  <div class="card-body">
+    <form method="POST" action="{{ route('purchases.store') }}">
+      @csrf
 
- <x-card class="p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Supplier</label>
+          <select name="supplier_id" class="form-select" required>
+            @foreach($suppliers ?? [] as $s)
+              <option value="{{ $s->id }}">{{ $s->name }}</option>
+            @endforeach
+          </select>
+        </div>
 
-  {{-- ALERT VALIDASI ----------------------------------------------------- --}}
-  @if ($errors->any())
-    <div class="alert alert-danger rounded-pill py-2 px-3 mb-3">
-      <ul class="mb-0 small">
-        @foreach ($errors->all() as $err)
-          <li>{{ $err }}</li>
-        @endforeach
-      </ul>
-    </div>
-  @endif
+        <div class="col-md-4">
+          <label class="form-label">No. Invoice</label>
+          <input name="invoice_no" class="form-control" required>
+        </div>
 
-  {{-- HEADER ------------------------------------------------------------- --}}
-  <div class="row g-3 mb-4">
-    <div class="col-md-6">
-      <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
-      <select name="supplier_id" class="form-select" required>
-        <option value="" disabled selected>- Pilih Supplier -</option>
-        @foreach($suppliers as $id => $nama)
-          <option value="{{ $id }}" {{ old('supplier_id')==$id?'selected':'' }}>{{ $nama }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label fw-semibold">No. Faktur <span class="text-danger">*</span></label>
-      <input type="text" name="invoice_no" class="form-control"
-             value="{{ old('invoice_no') }}" required>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label fw-semibold">Tanggal</label>
-      <input type="datetime-local" name="purchase_date"
-             value="{{ old('purchase_date', now()->format('Y-m-d\TH:i')) }}"
-             class="form-control">
-    </div>
+        <div class="col-md-4">
+          <label class="form-label">Tanggal</label>
+          <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Metode Bayar</label>
+          <select name="metode_bayar" class="form-select">
+            <option value="tunai">Tunai</option>
+            <option value="transfer">Transfer</option>
+            <option value="tempo">Tempo</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Diskon (Rp)</label>
+          <input name="discount" class="form-control" placeholder="cth: 100.000">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">PPN (%)</label>
+          <input name="tax_percent" class="form-control" placeholder="cth: 11">
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="table-responsive">
+        <table class="table align-middle" id="tbl-items">
+          <thead>
+            <tr>
+              <th style="width:50px">#</th>
+              <th>Barang</th>
+              <th>Unit</th>
+              <th class="text-end" style="width:120px">Qty</th>
+              <th class="text-end" style="width:180px">Harga</th>
+              <th style="width:80px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rownum">1</td>
+              <td>
+                <select name="items[0][barang_id]" class="form-select" required>
+                  @foreach($barangs ?? [] as $b)
+                    <option value="{{ $b->id }}">{{ $b->nama }}</option>
+                  @endforeach
+                </select>
+              </td>
+              <td>
+                <select name="items[0][unit_id]" class="form-select" required>
+                  @foreach($units ?? [] as $u)
+                    <option value="{{ $u->id }}">{{ $u->kode }}</option>
+                  @endforeach
+                </select>
+              </td>
+              <td><input name="items[0][qty]" type="number" min="1" value="1" class="form-control text-end"></td>
+              <td><input name="items[0][price]" class="form-control text-end" placeholder="cth: 5.000.000"></td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remove">Hapus</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" type="button" id="btnAdd">+ Item</button>
+        <button class="btn btn-primary ms-auto" type="submit">Simpan</button>
+      </div>
+    </form>
   </div>
+</div>
 
-  {{-- TABEL ITEM --------------------------------------------------------- --}}
-  <h6 class="fw-bold mb-2">Daftar Barang <span class="text-danger">*</span></h6>
-  <table class="table table-sm align-middle" id="itemsTable">
-    <thead class="table-light">
-      <tr>
-        <th style="width:45%">Barang</th>
-        <th style="width:10%">Qty</th>
-        <th style="width:20%">Harga</th>
-        <th style="width:20%">Subtotal</th>
-        <th style="width:5%"></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-    <tfoot>
-      <tr>
-        <td colspan="5">
-          <button type="button" class="btn btn-outline-primary btn-sm rounded-pill"
-                  onclick="addRow()">
-            <i class="bi bi-plus-circle"></i> Tambah Baris
-          </button>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
-
-  {{-- PEMBAYARAN & TOTAL ------------------------------------------------- --}}
-  <div class="row g-3 mt-4">
-    <div class="col-md-3">
-      <label class="form-label fw-semibold">Metode Bayar</label>
-      <select name="payment_method" class="form-select">
-        <option value="cash"     {{ old('payment_method')=='cash'?'selected':'' }}>Cash</option>
-        <option value="transfer" {{ old('payment_method')=='transfer'?'selected':'' }}>Transfer</option>
-        <option value="qris"     {{ old('payment_method')=='qris'?'selected':'' }}>QRIS</option>
-        <option value="credit"   {{ old('payment_method')=='credit'?'selected':'' }}>Credit</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label fw-semibold">Nominal Dibayar</label>
-      <input type="number" name="amount_paid" step="0.01"
-             value="{{ old('amount_paid') }}" class="form-control">
-    </div>
-    <div class="col-md-6 text-end align-self-end">
-      <h5 class="fw-semibold mb-1">Total</h5>
-      <h2 id="grandTotal" class="mb-0">Rp 0</h2>
-    </div>
-  </div>
-
-  {{-- CATATAN & TOMBOL SIMPAN ------------------------------------------- --}}
-  <div class="mt-4">
-    <label class="form-label fw-semibold">Catatan</label>
-    <textarea name="notes" rows="2" class="form-control rounded-4">{{ old('notes') }}</textarea>
-
-    <button class="btn btn-primary rounded-pill px-5 mt-3">
-      <i class="bi bi-save me-1"></i> Simpan
-    </button>
-  </div>
-
- </x-card>
-</form>
-
-{{-- SCRIPT DINAMIS ------------------------------------------------------- --}}
-@push('scripts')
-<script>
-  const barangOptions = @json($barangs);   // {id: "nama barang", ...}
-
-  function addRow(prefill = {}) {
-    const tbody = document.querySelector('#itemsTable tbody');
-    const idx   = tbody.rows.length;
-    const tr    = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td>
-        <select name="items[${idx}][barang_id]" class="form-select" required>
-          <option value="" disabled selected>- pilih -</option>
-          ${Object.entries(barangOptions).map(([id,nama]) =>
-              `<option value="${id}">${nama}</option>`).join('')}
-        </select>
-      </td>
-      <td>
-        <input type="number" name="items[${idx}][qty]" class="form-control text-end"
-               min="1" value="${prefill.qty ?? 1}"
-               oninput="calcSubtotal(this)">
-      </td>
-      <td>
-        <input type="number" name="items[${idx}][price]" class="form-control text-end"
-               min="0" step="0.01" value="${prefill.price ?? 0}"
-               oninput="calcSubtotal(this)">
-      </td>
-      <td class="text-end fw-semibold">0</td>
-      <td class="text-center">
-        <button type="button" class="btn btn-link text-danger p-0"
-                onclick="this.closest('tr').remove(); updateTotal();">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </td>`;
-    tbody.appendChild(tr);
-  }
-
-  function calcSubtotal(el) {
-    const tr    = el.closest('tr');
-    const qty   = parseFloat(tr.querySelector('[name$="[qty]"]').value)   || 0;
-    const price = parseFloat(tr.querySelector('[name$="[price]"]').value) || 0;
-    const sub   = qty * price;
-    tr.children[3].textContent = sub.toLocaleString('id-ID');
-    updateTotal();
-  }
-
-  function updateTotal() {
-    let total = 0;
-    document.querySelectorAll('#itemsTable tbody tr').forEach(tr => {
-      const qty   = parseFloat(tr.querySelector('[name$="[qty]"]').value)   || 0;
-      const price = parseFloat(tr.querySelector('[name$="[price]"]').value) || 0;
-      total += qty * price;
-    });
-    document.getElementById('grandTotal').textContent =
-        'Rp ' + total.toLocaleString('id-ID');
-  }
-
-  // Tambahkan baris pertama saat page load
-  addRow();
+{{-- Template baris untuk JS --}}
+<script type="text/template" id="row-template">
+<tr>
+  <td class="rownum"></td>
+  <td>
+    <select name="items[__INDEX__][barang_id]" class="form-select" required>
+      @foreach($barangs ?? [] as $b)
+        <option value="{{ $b->id }}">{{ $b->nama }}</option>
+      @endforeach
+    </select>
+  </td>
+  <td>
+    <select name="items[__INDEX__][unit_id]" class="form-select" required>
+      @foreach($units ?? [] as $u)
+        <option value="{{ $u->id }}">{{ $u->kode }}</option>
+      @endforeach
+    </select>
+  </td>
+  <td><input name="items[__INDEX__][qty]" type="number" min="1" value="1" class="form-control text-end"></td>
+  <td><input name="items[__INDEX__][price]" class="form-control text-end" placeholder="cth: 30.000"></td>
+  <td class="text-end">
+    <button type="button" class="btn btn-sm btn-outline-danger btn-remove">Hapus</button>
+  </td>
+</tr>
 </script>
-@endpush
+
+<script>
+(function(){
+  const tbody = document.querySelector('#tbl-items tbody');
+  const tpl   = document.getElementById('row-template').innerHTML;
+
+  function renumber() {
+    [...tbody.querySelectorAll('tr')].forEach((tr, idx) => {
+      const num = tr.querySelector('.rownum'); if (num) num.textContent = idx + 1;
+      tr.querySelectorAll('select, input').forEach(el => {
+        const name = el.getAttribute('name'); if (!name) return;
+        el.setAttribute('name', name.replace(/items\[\d+\]/, 'items[' + idx + ']'));
+      });
+    });
+  }
+  function addRow() {
+    const idx = tbody.children.length;
+    const html = tpl.replaceAll('__INDEX__', idx);
+    const wrapper = document.createElement('tbody');
+    wrapper.innerHTML = html.trim();
+    tbody.appendChild(wrapper.firstElementChild);
+    renumber();
+  }
+  tbody.addEventListener('click', e => {
+    if (e.target.classList.contains('btn-remove')) {
+      e.target.closest('tr').remove();
+      renumber();
+    }
+  });
+  document.getElementById('btnAdd').addEventListener('click', addRow);
+
+  // Format ribuan sederhana saat blur (backend tetap normalisasi)
+  tbody.addEventListener('blur', function(e){
+    if (e.target.name && e.target.name.endsWith('[price]')) {
+      let v = (e.target.value || '').toString().replace(/[^0-9]/g,'');
+      if (v === '') return;
+      e.target.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+  }, true);
+})();
+</script>
 @endsection

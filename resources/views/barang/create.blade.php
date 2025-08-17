@@ -3,18 +3,20 @@
 
 @section('content')
 <div class="card shadow-sm">
-  <div class="card-header">
-    <h5 class="mb-0">Tambah Barang</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+      <h5 class="mb-0">Tambah Barang</h5>
+      <small class="text-muted">Isi info, unit yang dipakai, dan (opsional) gambar</small>
+    </div>
+    <a href="{{ route('barang.index') }}" class="btn btn-outline-secondary btn-sm">← Kembali</a>
   </div>
 
   <div class="card-body">
-    <form action="{{ route('barang.store') }}" method="POST">
+    <form action="{{ route('barang.store') }}" method="POST" enctype="multipart/form-data">
       @csrf
-
-      {{--  ⬇️  panggil partial _form  --}}
       @include('barang._form', ['units' => $units])
 
-      <div class="d-flex justify-content-between">
+      <div class="d-flex justify-content-end gap-2 mt-4">
         <a href="{{ route('barang.index') }}" class="btn btn-secondary">Batal</a>
         <button type="submit" class="btn btn-primary">Simpan</button>
       </div>

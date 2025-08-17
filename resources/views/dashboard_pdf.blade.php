@@ -28,13 +28,22 @@
 </table>
 
 <h4>Stok Kritis</h4>
+@php
+  $stokUnit = function($b,$kode){
+    $u = optional($b->units)->firstWhere('kode',$kode);
+    return $u && $u->pivot ? $u->pivot->stok : 0;
+  };
+@endphp
 <table>
  <thead><tr><th>#</th><th>Nama</th><th>Pcs</th><th>Paket</th></tr></thead>
  <tbody>
   @forelse($stokKritis as $i=>$b)
-    <tr><td>{{ $i+1 }}</td><td>{{ $b->nama }}</td>
-        <td class="text-end">{{ $b->stok_satuan }}</td>
-        <td class="text-end">{{ $b->stok_paket }}</td></tr>
+    <tr>
+      <td>{{ $i+1 }}</td>
+      <td>{{ $b->nama }}</td>
+      <td class="text-end">{{ $stokUnit($b,'pcs') }}</td>
+      <td class="text-end">{{ $stokUnit($b,'paket') }}</td>
+    </tr>
   @empty
     <tr><td colspan="4" style="text-align:center">Semua stok aman</td></tr>
   @endforelse

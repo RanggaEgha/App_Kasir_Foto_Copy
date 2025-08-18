@@ -41,6 +41,26 @@
     <div class="wrapper d-flex flex-column min-vh-100">
       @include('layouts.header')
 
+      {{-- Welcome Card modern (glass, animasi, auto-close) --}}
+      @if (session('welcome'))
+        <div class="position-fixed top-0 start-50 translate-middle-x p-3 welcome-wrap" style="z-index:1080">
+          <div id="welcome-toast" class="welcome-card shadow-lg border-0">
+            <div class="d-flex align-items-start gap-3">
+              <div class="welcome-icon rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-emoji-smile"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">Selamat datang 👋</div>
+                <div class="small opacity-85">{{ session('welcome') }}</div>
+              </div>
+              <button id="welcome-close" class="btn-close btn-close-white ms-2" type="button" aria-label="Close"></button>
+            </div>
+            <div class="welcome-progress"></div>
+          </div>
+        </div>
+      @endif
+      {{-- /Welcome Card --}}
+
       <div class="body flex-grow-1">
         <div class="container-lg px-4">
           @yield('content')
@@ -71,13 +91,80 @@
       document.addEventListener('scroll', () => {
         if (header) header.classList.toggle('shadow-sm', document.documentElement.scrollTop > 0);
       });
+
+      // Inisialisasi Welcome Card
+      document.addEventListener('DOMContentLoaded', () => {
+        const card = document.getElementById('welcome-toast');
+        const closeBtn = document.getElementById('welcome-close');
+        if (!card) return;
+
+        const show = () => requestAnimationFrame(() => card.classList.add('is-show'));
+        const hide = () => {
+          card.classList.remove('is-show');
+          card.classList.add('is-hide');
+          setTimeout(() => card.parentElement?.remove(), 350);
+        };
+
+        // tampil & auto-hide 5 detik
+        show();
+        let timer = setTimeout(hide, 5000);
+
+        // klik tutup
+        closeBtn?.addEventListener('click', () => {
+          clearTimeout(timer);
+          hide();
+        });
+      });
     </script>
 
     @stack('scripts')
 
-    <!-- ───── Override CSS ───── -->
+    <!-- ───── Override CSS + Welcome styles ───── -->
     <style>
-      /* 1. Hilangkan chevron CoreUI */
+      /* Welcome modern styles */
+      .welcome-card{
+        --glass-bg: linear-gradient(135deg, rgba(99,102,241,.95), rgba(168,85,247,.92));
+        --glass-border: rgba(255,255,255,.25);
+        --progress: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6);
+        position: relative;
+        min-width: 320px;
+        max-width: 560px;
+        color: #fff;
+        padding: .9rem 1rem .55rem;
+        border-radius: 16px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 10px 30px rgba(43,55,84,.25);
+        transform: translateY(-14px) scale(.98);
+        opacity: 0;
+        transition: transform .35s ease, opacity .35s ease;
+      }
+      .welcome-card.is-show{ transform: translateY(0) scale(1); opacity: 1; }
+      .welcome-card.is-hide{ transform: translateY(-8px) scale(.98); opacity: 0; }
+
+      .welcome-icon{
+        width: 42px; height: 42px;
+        background: rgba(255,255,255,.18);
+        border: 1px solid rgba(255,255,255,.25);
+      }
+      .welcome-icon i{ font-size: 1.25rem; }
+
+      .welcome-progress{
+        position:absolute; left:0; right:0; bottom:0;
+        height: 3px; border-bottom-left-radius:16px; border-bottom-right-radius:16px;
+        background: var(--progress);
+        background-size: 200% 100%;
+        animation: welcome-progress 5s linear forwards, welcome-sheen 3s linear infinite;
+      }
+      @keyframes welcome-progress{ from{ width:100%; } to{ width:0%; } }
+      @keyframes welcome-sheen{
+        0%{ background-position: 0% 50%; }
+        100%{ background-position: 200% 50%; }
+      }
+
+      /* CoreUI small overrides (yang sudah ada) */
       .table-responsive::before,
       .table-responsive::after,
       .table::before,
@@ -89,40 +176,28 @@
       .dataTables_scroll i[class*="cil-chevron"],
       .dataTables_scroll svg[class*="cil-chevron"]{ display:none!important; }
 
-      /* 3. Perkecil ikon panah pagination */
       .pagination svg.w-5.h-5{width:1rem!important;height:1rem!important;vertical-align:middle}
       .pagination .page-link{padding:0.25rem 0.5rem;line-height:1.2}
 
-      /* 4. Sembunyikan SVG w-5 h-5 “liar” di halaman Barang */
       #app-barang-index svg.w-5.h-5{display:none!important;}
-      /* 6. penyempuraan tata letak */
-      /* 6. Rapikan pagination angka DataTables & Laravel */
-.dataTables_wrapper .pagination,          /* DataTables */
-.pagination {                             /* Laravel default */
-  margin: .25rem 0;
-  justify-content: center;                /* pusatkan; bisa diganti flex-start/end */
-}
 
-.pagination .page-item {
-  margin: 0 .125rem;                      /* jarak antar kotak */
-}
-
-.pagination .page-link{
-  padding: .25rem .6rem !important;       /* ramping */
-  font-size: .875rem;                     /* 14px */
-  border: 1px solid #dee2e6;              /* garis tipis */
-  border-radius: .25rem;
-  background: #fff;
-  line-height: 1.2;
-}
-
-/* hilangkan garis saat disabled (Prev di halaman pertama, dst) */
-.pagination .page-item.disabled .page-link{
-  background:#f8f9fa;
-  color:#adb5bd;
-  border-color:#dee2e6;
-}
-
+      .dataTables_wrapper .pagination,
+      .pagination {
+        margin: .25rem 0;
+        justify-content: center;
+      }
+      .pagination .page-item { margin: 0 .125rem; }
+      .pagination .page-link{
+        padding: .25rem .6rem !important;
+        font-size: .875rem;
+        border: 1px solid #dee2e6;
+        border-radius: .25rem;
+        background: #fff;
+        line-height: 1.2;
+      }
+      .pagination .page-item.disabled .page-link{
+        background:#f8f9fa; color:#adb5bd; border-color:#dee2e6;
+      }
     </style>
   </body>
 </html>

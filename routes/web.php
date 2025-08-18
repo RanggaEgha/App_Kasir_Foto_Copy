@@ -10,23 +10,47 @@ use App\Http\Controllers\{
     PurchaseOrderController,
     ShiftController,
     PembayaranController,
+    UserManagementController
 };
 
-Route::redirect('/', '/dashboard');
+/*
+|--------------------------------------------------------------------------
+| Redirect root → home (role-aware)
+|--------------------------------------------------------------------------
+| - Guest → login (ditangani di /home)
+| - Admin → /dashboard
+| - Kasir → /pembayaran (halaman POS)
+*/
+Route::redirect('/', '/home');
 
-Route::middleware(['auth', 'admin'])->group(function () {
+Route::get('/home', function () {
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
 
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/pdf', [DashboardController::class, 'pdf'])->name('dashboard.pdf');
-    Route::get('/dashboard/excel', [DashboardController::class, 'excel'])->name('dashboard.excel');
+    // Jaga flash message (mis. 'welcome') agar tidak hilang saat redirect kedua
+    session()->reflash();
 
-    // Master Barang & Units
+    return auth()->user()->role === 'admin'
+        ? redirect()->route('dashboard')
+        : redirect()->route('pembayaran.create');
+})->name('home');
+
+
+/*
+|--------------------------------------------------------------------------
+| KASIR & ADMIN (halaman yang boleh diketahui kasir)
+| Stealth: pakai middleware 'role:kasir,admin' → user di luar role ini akan 404
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
+
+    // Master Barang (FULL CRUD) + Units
     Route::resource('barang', BarangController::class);
-    Route::get('/barang/{id}/units',  [BarangController::class,'editUnits'])->name('barang.units.edit');
-    Route::put('/barang/{id}/units',  [BarangController::class,'updateUnits'])->name('barang.units.update');
+    Route::get('/barang/{id}/units', [BarangController::class, 'editUnits'])->name('barang.units.edit');
+    Route::put('/barang/{id}/units', [BarangController::class, 'updateUnits'])->name('barang.units.update');
 
-    // Master Jasa
+    // Master Jasa (FULL CRUD)
     Route::resource('jasa', JasaController::class);
 
     // Shift Kasir
@@ -38,9 +62,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // Pembayaran (POS)
     Route::prefix('pembayaran')->name('pembayaran.')->group(function () {
-        Route::get('/', [PembayaranController::class, 'create'])->name('create');         // Halaman POS
-        Route::post('/store', [PembayaranController::class, 'store'])->name('store');     // Simpan transaksi
-        Route::post('/pay/{transaksi}', [PembayaranController::class, 'pay'])->name('pay');   // Tambah pembayaran
+        Route::get('/', [PembayaranController::class, 'create'])->name('create');              // Halaman POS
+        Route::post('/store', [PembayaranController::class, 'store'])->name('store');          // Simpan transaksi
+        Route::post('/pay/{transaksi}', [PembayaranController::class, 'pay'])->name('pay');    // Tambah pembayaran
         Route::post('/void/{transaksi}', [PembayaranController::class, 'void'])->name('void'); // Batalkan transaksi
     });
 
@@ -49,13 +73,45 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/', [HistoryTransaksiController::class, 'index'])->name('index');
         Route::get('/{transaksi}', [HistoryTransaksiController::class, 'show'])->name('show');
         Route::get('/{transaksi}/pdf', [HistoryTransaksiController::class, 'pdf'])->name('pdf');
-        Route::post('/{transaksi}/post', [HistoryTransaksiController::class,'post'])->name('post'); // <-- di sini
+        Route::post('/{transaksi}/post', [HistoryTransaksiController::class, 'post'])->name('post');
     });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN-ONLY (kasir tidak boleh “tahu” → 404)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
+
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/pdf', [DashboardController::class, 'pdf'])->name('dashboard.pdf');
+    Route::get('/dashboard/excel', [DashboardController::class, 'excel'])->name('dashboard.excel');
 
     // Supplier & Purchase
     Route::resource('suppliers', SupplierController::class);
     Route::resource('purchases', PurchaseOrderController::class);
+
+    // Manajemen User (admin-only)
+    Route::resource('users', UserManagementController::class);
 });
 
-// route login/logout Breeze
-require __DIR__.'/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| Auth routes (Laravel Breeze)
+|--------------------------------------------------------------------------
+*/
+require __DIR__ . '/auth.php';
+
+
+/*
+|--------------------------------------------------------------------------
+| Fallback 404 (jaga-jaga)
+|--------------------------------------------------------------------------
+*/
+Route::fallback(function () {
+    abort(404);
+});

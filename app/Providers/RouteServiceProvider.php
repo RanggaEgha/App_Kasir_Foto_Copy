@@ -8,7 +8,7 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvi
 class RouteServiceProvider extends ServiceProvider
 {
     // Halaman tujuan setelah login
-    public const HOME = '/dashboard';
+    public const HOME = '/home';
 
     public function boot(): void
     {

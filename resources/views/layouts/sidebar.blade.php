@@ -15,7 +15,8 @@
 
   <ul class="sidebar-nav" data-coreui="navigation" data-simplebar="">
 
-    {{-- DASHBOARD --}}
+    {{-- DASHBOARD (Admin only) --}}
+    @can('admin')
     <li class="nav-item">
       <a class="nav-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}" href="{{ route('dashboard') }}">
         <svg class="nav-icon">
@@ -23,8 +24,10 @@
         </svg> Dashboard
       </a>
     </li>
+    @endcan
 
-    {{-- PRODUK & JASA (di atas Transaksi) --}}
+    {{-- PRODUK & JASA (Kasir & Admin) --}}
+    @can('kasir')
     <li class="nav-title mt-3">Produk &amp; Jasa</li>
 
     <li class="nav-item">
@@ -44,8 +47,10 @@
         </svg> Data Jasa
       </a>
     </li>
+    @endcan
 
-    {{-- TRANSAKSI --}}
+    {{-- TRANSAKSI (Kasir & Admin) --}}
+    @can('kasir')
     <li class="nav-title mt-3">Transaksi</li>
 
     <li class="nav-item">
@@ -74,8 +79,10 @@
         </svg> Shift Kasir
       </a>
     </li>
+    @endcan
 
-    {{-- PEMBELIAN --}}
+    {{-- PEMBELIAN (Admin only) --}}
+    @can('admin')
     <li class="nav-title mt-3">Pembelian</li>
 
     <li class="nav-item">
@@ -95,9 +102,22 @@
         </svg> Purchase Order
       </a>
     </li>
+    @endcan
 
-    {{-- LAINNYA --}}
+    {{-- LAINNYA (Admin only) --}}
+    @can('admin')
     <li class="nav-title mt-3">Lainnya</li>
+
+    @if (Route::has('users.index'))
+      <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}"
+           href="{{ route('users.index') }}">
+          <svg class="nav-icon">
+            <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-user') }}"></use>
+          </svg> Pengguna
+        </a>
+      </li>
+    @endif
 
     <li class="nav-item">
       <a class="nav-link" href="#">
@@ -106,8 +126,9 @@
         </svg> Pengaturan
       </a>
     </li>
+    @endcan
 
-    {{-- LOGOUT --}}
+    {{-- LOGOUT (semua role) --}}
     <li class="nav-item mt-auto">
       <a href="#"
          class="nav-link text-danger"

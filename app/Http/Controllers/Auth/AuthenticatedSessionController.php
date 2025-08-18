@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-// use App\Http\Requests\Auth\LoginRequest; // kalau kamu punya, bisa pakai ini
-use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Response;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
-use App\Providers\RouteServiceProvider;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -22,24 +21,34 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-{
-    $credentials = $request->validate([
-        'email'    => ['required','email'],
-        'password' => ['required'],
-    ]);
-
-    if (! \Illuminate\Support\Facades\Auth::attempt($credentials, false)) {
-        throw \Illuminate\Validation\ValidationException::withMessages([
-            'email' => trans('auth.failed'),
+    public function store(Request $request) /* RedirectResponse not needed; we return Inertia::location */
+    {
+        $credentials = $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required'],
         ]);
+
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            throw ValidationException::withMessages(['email' => trans('auth.failed')]);
+        }
+
+        if (! (Auth::user()->is_active ?? false)) {
+            Auth::logout();
+            throw ValidationException::withMessages(['email' => 'Akun dinonaktifkan.']);
+        }
+
+        $request->session()->regenerate();
+
+        // Flash ucapan welcome
+        $user = Auth::user();
+        $hour = (int) now()->setTimezone(config('app.timezone'))->format('H');
+        $greet = $hour < 11 ? 'Selamat pagi' : ($hour < 15 ? 'Selamat siang' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam'));
+        Session::flash('welcome', "{$greet}, {$user->name}! Anda masuk sebagai " . ucfirst($user->role) . ".");
+
+        // Langsung hard-redirect ke halaman sesuai role (menghindari 2x redirect)
+        $dest = $user->role === 'admin' ? route('dashboard') : route('pembayaran.create');
+        return Inertia::location($dest);
     }
-
-    $request->session()->regenerate();
-
-    // <<— ini kuncinya: paksa browser visit /dashboard (bukan XHR)
-    return Inertia::location(route('dashboard'));
-}
 
     public function destroy(Request $request): RedirectResponse
     {

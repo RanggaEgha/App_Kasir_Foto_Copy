@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 class AuthServiceProvider extends ServiceProvider
 {
     /**
@@ -20,7 +20,10 @@ class AuthServiceProvider extends ServiceProvider
      * Register any authentication / authorization services.
      */
     public function boot(): void
-    {
-        //
-    }
+{
+    // admin auto lolos semua ability
+    Gate::before(fn(User $u,$a) => $u->role === 'admin' ? true : null);
+    Gate::define('admin', fn(User $u) => $u->role === 'admin');
+    Gate::define('kasir', fn(User $u) => in_array($u->role, ['kasir','admin'], true));
+}
 }

@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Concerns\HasAuditLogs;
 
 class User extends Authenticatable
 {
+    use HasAuditLogs;
+    
     use HasApiTokens, HasFactory, Notifiable;
     public function isAdmin(): bool { return $this->role === 'admin'; }
 

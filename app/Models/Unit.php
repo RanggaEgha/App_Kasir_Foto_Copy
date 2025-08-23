@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class Unit extends Model
 {
+    use HasAuditLogs;
+    
     protected $fillable = ['kode','konversi'];
 
     public function barangs()

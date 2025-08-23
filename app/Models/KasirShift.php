@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class KasirShift extends Model
 {
+    use HasAuditLogs;
+    
     protected $fillable = [
         'user_id','opened_at','opening_cash','closed_at',
         'closing_cash','expected_cash','difference','status','notes'

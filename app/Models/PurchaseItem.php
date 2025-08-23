@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class PurchaseItem extends Model
 {
+    use HasAuditLogs;
+    
     protected $fillable = [
         'purchase_order_id','barang_id','unit_id','qty','unit_price','subtotal'
     ];

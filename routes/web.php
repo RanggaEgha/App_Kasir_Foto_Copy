@@ -10,16 +10,18 @@ use App\Http\Controllers\{
     PurchaseOrderController,
     ShiftController,
     PembayaranController,
-    UserManagementController
+    UserManagementController,
+    AuditLogController
 };
+use App\Models\AuditLog;
 
 /*
 |--------------------------------------------------------------------------
 | Redirect root → home (role-aware)
-|--------------------------------------------------------------------------
 | - Guest → login (ditangani di /home)
 | - Admin → /dashboard
 | - Kasir → /pembayaran (halaman POS)
+|--------------------------------------------------------------------------
 */
 Route::redirect('/', '/home');
 
@@ -39,8 +41,8 @@ Route::get('/home', function () {
 
 /*
 |--------------------------------------------------------------------------
-| KASIR & ADMIN (halaman yang boleh diketahui kasir)
-| Stealth: pakai middleware 'role:kasir,admin' → user di luar role ini akan 404
+| KASIR & ADMIN
+| Halaman yang boleh diketahui kasir (stealth pakai middleware role)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
@@ -70,11 +72,22 @@ Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
 
     // History Transaksi (read-only + actions)
     Route::prefix('history')->name('history.')->group(function () {
-        Route::get('/', [HistoryTransaksiController::class, 'index'])->name('index');
-        Route::get('/{transaksi}', [HistoryTransaksiController::class, 'show'])->name('show');
-        Route::get('/{transaksi}/pdf', [HistoryTransaksiController::class, 'pdf'])->name('pdf');
-        Route::post('/{transaksi}/post', [HistoryTransaksiController::class, 'post'])->name('post');
+        // Rute spesifik dulu agar tidak ditelan '/{transaksi}'
+        Route::get('/{transaksi}/pdf',  [HistoryTransaksiController::class, 'pdf'])->name('pdf');
+        Route::post('/{transaksi}/post',[HistoryTransaksiController::class, 'post'])->name('post');
+
+        Route::get('/',             [HistoryTransaksiController::class, 'index'])->name('index');
+        Route::get('/{transaksi}',  [HistoryTransaksiController::class, 'show'])->name('show');
     });
+
+    // Aktivitas saya (kasir/admin melihat log miliknya sendiri)
+    Route::get('/aktivitas-saya', function () {
+        $logs = AuditLog::where('actor_id', auth()->id())
+            ->latest('id')
+            ->paginate(20);
+
+        return view('audit_logs.my', compact('logs'));
+    })->name('audit.mine');
 });
 
 
@@ -86,8 +99,8 @@ Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
 Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
 
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/pdf', [DashboardController::class, 'pdf'])->name('dashboard.pdf');
+    Route::get('/dashboard',       [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/pdf',   [DashboardController::class, 'pdf'])->name('dashboard.pdf');
     Route::get('/dashboard/excel', [DashboardController::class, 'excel'])->name('dashboard.excel');
 
     // Supplier & Purchase
@@ -96,6 +109,10 @@ Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
 
     // Manajemen User (admin-only)
     Route::resource('users', UserManagementController::class);
+
+    // Audit Trail (admin-only)
+    Route::get('/audit-logs',            [AuditLogController::class, 'index'])->name('audit.index');
+    Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit.show');
 });
 
 

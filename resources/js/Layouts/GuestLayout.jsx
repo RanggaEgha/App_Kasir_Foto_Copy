@@ -120,7 +120,7 @@ export default function GuestLayout({children}) {
                   backgroundSize: "200% 100%",
                   animation: "textShine 12s linear infinite"
                 }}>
-                Foto Copy App
+                Stationery
               </div>
               <div className="text-[10px] md:text-[11px] uppercase tracking-[0.22em]
                              text-slate-600/80 dark:text-white/65" style={{

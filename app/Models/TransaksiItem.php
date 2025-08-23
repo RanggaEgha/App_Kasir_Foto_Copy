@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class TransaksiItem extends Model
 {
+    use HasAuditLogs;
+    
     protected $fillable = [
         'transaksi_id',
         'barang_id',

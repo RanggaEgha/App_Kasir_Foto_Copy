@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class PaymentRecord extends Model
 {
+    use HasAuditLogs;
+    
     protected $fillable = [
         'transaksi_id','direction','method','amount','reference',
         'paid_at','shift_id','created_by'

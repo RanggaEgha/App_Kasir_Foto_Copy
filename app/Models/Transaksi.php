@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAuditLogs;
 
 class Transaksi extends Model
 {
+    use HasAuditLogs;
     /** Kolom yang boleh mass-assign */
     protected $fillable = [
         'kode_transaksi',

@@ -81,6 +81,19 @@
     </li>
     @endcan
 
+    {{-- ===== AKTIVITAS SAYA (Kasir & Admin) ===== --}}
+    @canany(['kasir','admin'])
+    <li class="nav-title mt-3">Aktivitas</li>
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('audit.mine') ? 'active' : '' }}"
+         href="{{ route('audit.mine') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-user') }}"></use>
+        </svg> Aktivitas Saya
+      </a>
+    </li>
+    @endcanany
+
     {{-- PEMBELIAN (Admin only) --}}
     @can('admin')
     <li class="nav-title mt-3">Pembelian</li>
@@ -118,6 +131,16 @@
         </a>
       </li>
     @endif
+
+    {{-- AUDIT LOGS (Admin only) --}}
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('audit.index') ? 'active' : '' }}"
+         href="{{ route('audit.index') }}">
+        <svg class="nav-icon">
+          <use xlink:href="{{ asset('coreui/vendors/@coreui/icons/svg/free.svg#cil-notes') }}"></use>
+        </svg> Audit Logs
+      </a>
+    </li>
 
     <li class="nav-item">
       <a class="nav-link" href="#">

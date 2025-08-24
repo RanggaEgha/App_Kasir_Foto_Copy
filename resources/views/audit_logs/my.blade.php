@@ -7,6 +7,16 @@
   $nf     = fn($v) => is_numeric($v) ? number_format($v, 0, ',', '.') : (is_bool($v) ? ($v?'true':'false') : ($v===null?'':(string)$v));
   $rupiah = fn($v) => is_numeric($v) ? 'Rp '.$nf($v) : '';
 
+  // parse angka longgar (menerima "1.234,56" / "1234.56")
+  $toFloat = function($v){
+    if ($v===null || $v==='') return null;
+    if (is_numeric($v)) return (float)$v;
+    $s = str_replace([' ', "\u{A0}"], '', (string)$v);
+    if (preg_match('~^\d{1,3}(\.\d{3})+(,\d+)?$~', $s)) $s = str_replace('.','',$s);
+    $s = str_replace(',','.',$s);
+    return is_numeric($s) ? (float)$s : null;
+  };
+
   // Status bayar → Indonesia
   $payStatus = fn($s) => match($s) {
     'paid'    => 'Lunas',
@@ -53,6 +63,58 @@
     if (preg_match('/TRX[0-9A-Z]+/i', $desc, $m)) return strtoupper($m[0]);
     return null;
   };
+
+  // Ambil daftar item dari properties/new_values (nama, qty, unit, harga, subtotal)
+  $extractItems = function($log) use ($toFloat){
+    $items = [];
+    $props = is_array($log->properties) ? $log->properties : [];
+    $new   = is_array($log->new_values) ? $log->new_values : [];
+    $lists = [];
+    if (isset($props['items']) && is_array($props['items'])) $lists[] = $props['items'];
+    if (isset($new['items'])   && is_array($new['items']))   $lists[] = $new['items'];
+
+    foreach ($lists as $arr) {
+      foreach ($arr as $it) {
+        if (!is_array($it)) continue;
+        $name = $it['nama'] ?? $it['product_name'] ?? $it['item_name'] ?? $it['deskripsi'] ?? 'Item';
+        $qty  = $toFloat($it['qty'] ?? $it['jumlah'] ?? $it['quantity'] ?? 1) ?? 1;
+        $unit = $it['unit'] ?? $it['satuan'] ?? 'pcs';
+        $price= $toFloat($it['harga'] ?? $it['harga_satuan'] ?? $it['unit_price'] ?? null);
+        $sub  = $toFloat($it['subtotal'] ?? $it['line_total'] ?? null);
+        if ($price===null && $sub!==null && $qty>0) $price = $sub / $qty;
+        $items[] = ['name'=>$name,'qty'=>$qty,'unit'=>$unit,'price'=>$price,'subtotal'=>$sub ?? ($price!==null?$price*$qty:null)];
+      }
+      if ($items) break;
+    }
+    return $items;
+  };
+
+  // Tebak total: dari beberapa key; kalau tidak ada, jumlahkan subtotal item
+  $guessTotal = function($log, array $items) use ($toFloat){
+    $props = is_array($log->properties) ? $log->properties : [];
+    $old   = is_array($log->old_values) ? $log->old_values : [];
+    $new   = is_array($log->new_values) ? $log->new_values : [];
+    $cands = [
+      $props['total_harga'] ?? null,
+      $new['total_harga']   ?? null,
+      $old['total_harga']   ?? null,
+      $props['grand_total'] ?? null,
+      $new['grand_total']   ?? null,
+      $old['grand_total']   ?? null,
+      $props['total']       ?? null,
+      $new['total']         ?? null,
+      $old['total']         ?? null,
+    ];
+    foreach ($cands as $c) {
+      $f = $toFloat($c);
+      if ($f !== null) return $f;
+    }
+    if ($items) {
+      $sum = 0; foreach($items as $ln) $sum += $toFloat($ln['subtotal'] ?? null) ?? 0;
+      return $sum > 0 ? $sum : null;
+    }
+    return null;
+  };
 @endphp
 
 <style>
@@ -72,6 +134,11 @@
   .audit-table .col-status { width:170px;  padding-left:12px; }
   .audit-table .col-metode { width:130px;  padding-left:12px; }
   .audit-table .col-items  { min-width:380px; white-space:normal; }
+
+  /* ⭐️ Pembayaran: kolom tambahan Keterangan */
+  .audit-table .col-pay-amount{ width:200px; padding-right:24px; }
+  .audit-table .col-pay-ref{ width:220px; padding-left:20px; }
+  .audit-table .col-pay-info{ min-width:460px; white-space:normal; }
 
   /* ⭐️ Perbaikan: total nempel atas & tidak terlalu jauh */
   .audit-table td.col-total{
@@ -94,12 +161,8 @@
   .badge-method.transfer{background:#eef2ff; color:#4a57d2}
   .badge-method.qris{background:#f2e8ff; color:#7e22ce}
 
-  .list-items{ margin:.2rem 0 0 1rem; }
+  .list-items{ margin:.25rem 0 0 1rem; }
   .list-items li{ margin:.15rem 0; }
-
-  /* ⭐️ Jarak PAYMENTS: “Jumlah” ↔ “Referensi” */
-  .audit-table .col-pay-amount{ width:200px; padding-right:24px; }
-  .audit-table .col-pay-ref{ width:260px; padding-left:20px; }
 </style>
 
 <div class="card shadow-sm">
@@ -119,7 +182,7 @@
 
     <div class="tab-content pt-3">
 
-      {{-- ================= Pembayaran ================= --}}
+      {{-- ================= Pembayaran (dengan Keterangan & daftar item) ================= --}}
       <div class="tab-pane fade show active" id="pane-payments">
         <div class="audit-table-wrap">
           <table class="table table-sm audit-table">
@@ -130,6 +193,7 @@
                 <th>Metode</th>
                 <th class="text-end col-pay-amount">Jumlah</th>
                 <th class="col-pay-ref">Referensi</th>
+                <th class="col-pay-info">Keterangan</th>
               </tr>
             </thead>
             <tbody>
@@ -139,6 +203,10 @@
                   $kode = $p['transaksi_kode'] ?? $extractKode($log) ?? ('Transaksi#'.$log->subject_id);
                   $mLbl = isset($p['method']) ? $methodId($p['method']) : null;
                   $mCls = match($mLbl){ 'Tunai'=>'tunai','Transfer'=>'transfer','QRIS'=>'qris', default=>'tunai'};
+
+                  $items = $extractItems($log);
+                  $total = $guessTotal($log, $items);
+                  $amountPaid = $toFloat($p['amount'] ?? null);
                 @endphp
                 <tr>
                   <td>{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
@@ -150,11 +218,37 @@
                     @endif
                   </td>
                   <td>@if($mLbl)<span class="badge-method {{ $mCls }}">{{ $mLbl }}</span>@endif</td>
-                  <td class="text-end col-pay-amount">@if(isset($p['amount']))<span class="money">{{ $rupiah($p['amount']) }}</span>@endif</td>
+                  <td class="text-end col-pay-amount">@if(!is_null($amountPaid))<span class="money">{{ $rupiah($amountPaid) }}</span>@endif</td>
                   <td class="col-pay-ref">{{ $p['reference'] ?? '' }}</td>
+                  <td class="col-pay-info">
+                    {{-- Ringkasan singkat --}}
+                    <div>
+                      @if(!is_null($total)) Total transaksi: <strong>{{ $rupiah($total) }}</strong>@endif
+                      @if(!is_null($amountPaid)) • Dibayar: <strong>{{ $rupiah($amountPaid) }}</strong>@endif
+                      @if($mLbl) • Metode: <strong>{{ $mLbl }}</strong>@endif
+                    </div>
+                    {{-- Daftar item --}}
+                    @if($items)
+                      <ul class="list-items">
+                        @foreach($items as $it)
+                          @php
+                            $qtyDisp = rtrim(rtrim(number_format($it['qty'],2,',','.'),'0'),',');
+                            $price   = $it['price'];
+                            $sub     = $it['subtotal'];
+                          @endphp
+                          <li>
+                            {{ $it['name'] }}
+                            × <strong>{{ $qtyDisp }} {{ $it['unit'] }}</strong>
+                            @if(!is_null($price)) @ {{ $rupiah($price) }} @endif
+                            @if(!is_null($sub)) = <strong>{{ $rupiah($sub) }}</strong> @endif
+                          </li>
+                        @endforeach
+                      </ul>
+                    @endif
+                  </td>
                 </tr>
               @empty
-                <tr><td colspan="5" class="text-center text-muted">Belum ada pembayaran.</td></tr>
+                <tr><td colspan="6" class="text-center text-muted">Belum ada pembayaran.</td></tr>
               @endforelse
             </tbody>
           </table>

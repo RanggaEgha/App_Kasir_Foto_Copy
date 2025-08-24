@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Notifications\DatabaseNotification;
 use App\Http\Controllers\{
     DashboardController,
     BarangController,
@@ -13,7 +14,7 @@ use App\Http\Controllers\{
     UserManagementController,
     AuditLogController
 };
-use App\Models\AuditLog;
+use App\Models\{AuditLog, User};
 
 /*
 |--------------------------------------------------------------------------
@@ -73,11 +74,12 @@ Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
     // History Transaksi (read-only + actions)
     Route::prefix('history')->name('history.')->group(function () {
         // Rute spesifik dulu agar tidak ditelan '/{transaksi}'
-        Route::get('/{transaksi}/pdf',  [HistoryTransaksiController::class, 'pdf'])->name('pdf');
-        Route::post('/{transaksi}/post',[HistoryTransaksiController::class, 'post'])->name('post');
+        Route::get('/{transaksi}/receipt', [HistoryTransaksiController::class, 'receipt'])->name('receipt'); // struk print
+        Route::get('/{transaksi}/pdf',     [HistoryTransaksiController::class, 'pdf'])->name('pdf');
+        Route::post('/{transaksi}/post',   [HistoryTransaksiController::class, 'post'])->name('post');
 
-        Route::get('/',             [HistoryTransaksiController::class, 'index'])->name('index');
-        Route::get('/{transaksi}',  [HistoryTransaksiController::class, 'show'])->name('show');
+        Route::get('/',            [HistoryTransaksiController::class, 'index'])->name('index');
+        Route::get('/{transaksi}', [HistoryTransaksiController::class, 'show'])->name('show');
     });
 
     // Aktivitas saya (kasir/admin melihat log miliknya sendiri)
@@ -113,6 +115,24 @@ Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
     // Audit Trail (admin-only)
     Route::get('/audit-logs',            [AuditLogController::class, 'index'])->name('audit.index');
     Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit.show');
+
+    // Notifikasi (admin) — tandai dibaca
+    Route::post('/notifications/{id}/read', function (string $id) {
+        $n = DatabaseNotification::findOrFail($id);
+        // Amankan: hanya boleh menandai punya dirinya (admin yang login)
+        abort_unless(
+            $n->notifiable_type === User::class && $n->notifiable_id === auth()->id(),
+            403
+        );
+        $n->markAsRead();
+        return back();
+    })->name('notifications.read');
+
+    // (Opsional) tandai semua notifikasi sebagai dibaca
+    Route::post('/notifications/read-all', function () {
+        auth()->user()?->unreadNotifications()?->update(['read_at' => now()]);
+        return back();
+    })->name('notifications.read_all');
 });
 
 

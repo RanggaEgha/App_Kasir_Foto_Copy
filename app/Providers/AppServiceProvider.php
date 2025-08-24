@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
+
+// Registrasi observer stok
+use App\Models\BarangUnitPrice;
+use App\Observers\BarangUnitPriceObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,9 +26,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         /* ── Locale & Timezone global ─────────────────────────── */
-        // Pastikan semua instance Carbon mewarisi pengaturan ini
         Carbon::setLocale('id');                 // Bahasa Indonesia
         config(['app.timezone' => 'Asia/Jakarta']);
         date_default_timezone_set('Asia/Jakarta');
+
+        /* ── Kompatibilitas MySQL/MariaDB lama ────────────────── */
+        // Hindari error "Specified key was too long" di beberapa environment
+        Schema::defaultStringLength(191);
+
+        /* ── Model Observers ───────────────────────────────────── */
+        // Penting: supaya perubahan stok via Eloquent ->save() memicu notifikasi
+        BarangUnitPrice::observe(BarangUnitPriceObserver::class);
     }
 }

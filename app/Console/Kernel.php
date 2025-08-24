@@ -12,8 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $time = config('alerts.daily_summary_time', '21:00'); // WIB
+        $schedule->command('sales:daily-summary')->dailyAt($time);
     }
+
 
     /**
      * Register the commands for the application.

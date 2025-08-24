@@ -4,99 +4,127 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;        // ← yang benar
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Notifications\DatabaseNotification as Notification;
 use App\Exports\DashboardExport;
-use App\Models\PurchaseOrder;
-use App\Models\Supplier;
 use App\Models\{Transaksi, TransaksiItem, Barang};
 
 class DashboardController extends Controller
 {
-    /* ---------- DASHBOARD ---------- */
     public function index()
     {
         [$harian, $mingguan] = $this->ringkasOmzet();
+
+        // Tampilkan 10 notifikasi terbaru secara global (semua user)
+        $notifications = Notification::orderByDesc('created_at')->limit(10)->get();
+
         return view('dashboard', [
-            'harian'     => $harian,
-            'mingguan'   => $mingguan,
-            'topItems'   => $this->topItems(),
-            'stokKritis' => $this->stokKritis(),
+            'harian'        => $harian,
+            'mingguan'      => $mingguan,
+            'topItems'      => $this->topItems(),
+            'stokKritis'    => $this->stokKritis(),
+            'notifications' => $notifications,
         ]);
     }
 
-    /* ---------- RINGKAS OMZET ---------- */
     private function ringkasOmzet(): array
     {
         $today = Carbon::today();
-        $week  = Carbon::today()->subDays(6);   // 7 hari ke belakang
+        $week  = Carbon::today()->subDays(6);
 
         return [
-            Transaksi::whereDate('tanggal', $today)->sum('total_harga'),
-            Transaksi::whereDate('tanggal', '>=', $week)->sum('total_harga'),
+            (int) Transaksi::where('status','posted')->whereDate('tanggal', $today)->sum('total_harga'),
+            (int) Transaksi::where('status','posted')->whereDate('tanggal', '>=', $week)->sum('total_harga'),
         ];
     }
 
-    /* ---------- TOP-10 ITEM ---------- */
     private function topItems()
     {
         return TransaksiItem::selectRaw("
                 COALESCE(barangs.nama, jasas.nama) AS nama,
-                SUM(jumlah)  AS qty,
-                SUM(subtotal) AS omzet
+                SUM(transaksi_items.jumlah)  AS qty,
+                SUM(transaksi_items.subtotal) AS omzet
             ")
-            ->leftJoin('barangs','barangs.id','=','transaksi_items.barang_id')
-            ->leftJoin('jasas',  'jasas.id',  '=','transaksi_items.jasa_id')
+            ->join('transaksis', 'transaksis.id', '=', 'transaksi_items.transaksi_id')
+            ->leftJoin('barangs', 'barangs.id', '=', 'transaksi_items.barang_id')
+            ->leftJoin('jasas',   'jasas.id',   '=', 'transaksi_items.jasa_id')
+            ->where('transaksis.status', 'posted')
             ->groupBy('nama')
             ->orderByDesc('omzet')
             ->limit(10)
             ->get();
     }
 
-    /* ---------- STOK KRITIS (pivot) ---------- */
     private function stokKritis()
     {
-        $pcsLimit  = 50;   // ≤ 50 pcs
-        $packLimit = 2;    // ≤ 2 pack
+        $map       = (array) config('alerts.stock_low_thresholds', []); // mis. ['pcs'=>5,'paket'=>2,'lusin'=>1]
+        $fallback  = (int) config('alerts.stock_low_threshold', 5);
+        $mapCodes  = array_keys($map);
 
-        return Barang::with('units')        // eager-load
-           ->whereHas('units', function ($u) use ($pcsLimit, $packLimit) {
-    $u->where(function ($q) use ($pcsLimit) {
-            $q->where('units.kode', 'pcs')
-              ->where('barang_unit_prices.stok', '<=', $pcsLimit);
-        })
-      ->orWhere(function ($q) use ($packLimit) {
-            $q->where('units.kode', 'paket') // <— ganti 'pack' menjadi 'paket'
-              ->where('barang_unit_prices.stok', '<=', $packLimit);
-        });
-})
-
+        // Eager-load hanya units yang low:
+        // - unit yang ada di map: stok <= limit per unit
+        // - unit yang TIDAK ada di map: stok <= fallback
+        return Barang::query()
+            ->with(['units' => function ($u) use ($map, $mapCodes, $fallback) {
+                $u->where(function ($q) use ($map, $mapCodes, $fallback) {
+                    // 1) Unit yang di-map
+                    foreach ($map as $kode => $lim) {
+                        $q->orWhere(function ($x) use ($kode, $lim) {
+                            $x->where('units.kode', $kode)
+                              ->where('barang_unit_prices.stok', '<=', (int) $lim);
+                        });
+                    }
+                    // 2) Unit lain (tidak ada di map) pakai fallback threshold
+                    $q->orWhere(function ($x) use ($mapCodes, $fallback) {
+                        $x->whereNotIn('units.kode', $mapCodes)
+                          ->where('barang_unit_prices.stok', '<=', $fallback);
+                    });
+                });
+            }])
+            ->whereHas('units', function ($u) use ($map, $mapCodes, $fallback) {
+                $u->where(function ($q) use ($map, $mapCodes, $fallback) {
+                    foreach ($map as $kode => $lim) {
+                        $q->orWhere(function ($x) use ($kode, $lim) {
+                            $x->where('units.kode', $kode)
+                              ->where('barang_unit_prices.stok', '<=', (int) $lim);
+                        });
+                    }
+                    $q->orWhere(function ($x) use ($mapCodes, $fallback) {
+                        $x->whereNotIn('units.kode', $mapCodes)
+                          ->where('barang_unit_prices.stok', '<=', $fallback);
+                    });
+                });
+            })
             ->get()
-            ->sortBy(fn ($b) => $b->stokPcs());   // method di model Barang
+            // Urutkan berdasarkan stok TERKECIL di antara unit-unit low
+            ->sortBy(function ($b) {
+                return collect($b->units ?? [])
+                    ->map(fn ($u) => (int) data_get($u, 'pivot.stok', 0))
+                    ->min() ?? PHP_INT_MAX;
+            })
+            ->values();
     }
+
     public function pdf()
-{
-    // pakai helper existing agar konsisten dgn halaman dashboard
-    [$harian, $mingguan] = $this->ringkasOmzet();
-    $topItems   = $this->topItems();
-    $stokKritis = $this->stokKritis(); // sudah include with('units')
+    {
+        [$harian, $mingguan] = $this->ringkasOmzet();
+        $topItems   = $this->topItems();
+        $stokKritis = $this->stokKritis();
 
-    return Pdf::loadView('dashboard_pdf', compact('harian','mingguan','topItems','stokKritis'))
-              ->setPaper('A4','portrait')
-              ->stream('dashboard.pdf');
-}
- public function excel()
-{
-    // Ambil data persis seperti di dashboard
-    [$harian, $mingguan] = $this->ringkasOmzet();
-    $topItems   = $this->topItems();
-    $stokKritis = $this->stokKritis(); // sudah with('units')
+        return Pdf::loadView('dashboard_pdf', compact('harian', 'mingguan', 'topItems', 'stokKritis'))
+                  ->setPaper('A4', 'portrait')
+                  ->stream('dashboard.pdf');
+    }
 
-    // Cocokkan signature DashboardExport(harian, mingguan, topItems, stokKritis)
-    return Excel::download(
-        new DashboardExport($harian, $mingguan, $topItems, $stokKritis),
-        'dashboard.xlsx'
-    );
-}
+    public function excel()
+    {
+        [$harian, $mingguan] = $this->ringkasOmzet();
+        $topItems   = $this->topItems();
+        $stokKritis = $this->stokKritis();
 
-
+        return Excel::download(
+            new DashboardExport($harian, $mingguan, $topItems, $stokKritis),
+            'dashboard.xlsx'
+        );
+    }
 }

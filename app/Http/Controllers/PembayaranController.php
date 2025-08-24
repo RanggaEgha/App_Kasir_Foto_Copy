@@ -80,7 +80,7 @@ class PembayaranController extends Controller
                 $trx = Transaksi::create([
                     'kode_transaksi' => $this->generateKode(),
                     'tanggal'        => now(),
-                    'metode_bayar'   => $data['metode_bayar'],  // last method (tercatat)
+                    'metode_bayar'   => $data['metode_bayar'],
                     'status'         => 'draft',
                     'payment_status' => 'unpaid',
                     'total_harga'    => 0,
@@ -89,16 +89,11 @@ class PembayaranController extends Controller
                     'shift_id'       => $data['metode_bayar'] === 'cash' ? $shiftId : null,
                 ]);
 
-                // Log: membuat draft transaksi
-                Audit::log(
-                    event: 'transaksi.created',
-                    subject: $trx,
-                    description: "Membuat draft transaksi {$trx->kode_transaksi}"
-                );
+                Audit::log('transaksi.created', $trx, "Membuat draft transaksi {$trx->kode_transaksi}");
 
                 // 2) Detail + potong stok untuk barang
                 $grand = 0;
-                $itemsSummary = []; // ringkasan item untuk audit
+                $itemsSummary = [];
 
                 foreach ($data['items'] as $row) {
                     $qty   = (int)$row['jumlah'];
@@ -107,7 +102,7 @@ class PembayaranController extends Controller
                     $grand += $sub;
 
                     if ($row['tipe_item'] === 'barang') {
-                        // Ambil pivot stok & kunci baris untuk mencegah race
+                        // Kunci baris pivot
                         $pivot = BarangUnitPrice::where('barang_id', $row['barang_id'])
                             ->where('unit_id',   $row['unit_id'])
                             ->lockForUpdate()
@@ -117,15 +112,16 @@ class PembayaranController extends Controller
                             throw new \Exception('Stok tidak cukup untuk salah satu barang.');
                         }
 
-                        $oldStock = (int)$pivot->stok;
-                        $pivot->decrement('stok', $qty);
-                        $newStock = $oldStock - $qty;
+                        // PENTING: pakai save() agar event Eloquent terpanggil → observer jalan
+                        $oldStock    = (int) $pivot->stok;
+                        $pivot->stok = $oldStock - $qty;
+                        $pivot->save();                 // <— ini yang menembak observer
+                        $newStock    = (int) $pivot->stok;
 
-                        // Ambil label untuk menambah detail di log
-                        $barangNama = Barang::find($pivot->barang_id)?->nama;
-                        $unitKode   = Unit::find($pivot->unit_id)?->kode;
+                        $pivot->loadMissing('barang:id,nama','unit:id,kode');
+                        $barangNama = $pivot->barang?->nama;
+                        $unitKode   = $pivot->unit?->kode;
 
-                        // Log: potong stok barang-unit (manual, karena decrement tidak memicu event model)
                         Audit::log(
                             event: 'stock.decremented',
                             subject: $pivot,
@@ -141,7 +137,6 @@ class PembayaranController extends Controller
                             ]
                         );
 
-                        // Tambahkan ke ringkasan item (barang)
                         $itemsSummary[] = [
                             'type'     => 'barang',
                             'nama'     => $barangNama ?? ('Barang#'.$row['barang_id']),
@@ -151,7 +146,6 @@ class PembayaranController extends Controller
                             'subtotal' => $sub,
                         ];
                     } else {
-                        // Ringkasan item (jasa)
                         $jasaNama = Jasa::find($row['jasa_id'])?->nama;
 
                         $itemsSummary[] = [
@@ -175,7 +169,7 @@ class PembayaranController extends Controller
                     ]);
                 }
 
-                // 3) Finalisasi header: posted + payment status
+                // 3) Finalisasi header
                 $dibayar = (int)$data['dibayar'];
                 $trx->update([
                     'status'         => 'posted',
@@ -186,7 +180,6 @@ class PembayaranController extends Controller
                     'payment_status' => $dibayar >= $grand ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
                 ]);
 
-                // Log: posting transaksi (sertakan ringkasan item terjual)
                 Audit::log(
                     event: 'transaksi.posted',
                     subject: $trx,
@@ -197,11 +190,11 @@ class PembayaranController extends Controller
                         'kembalian'   => max(0, $dibayar - $grand),
                         'status_bayar'=> $dibayar >= $grand ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
                         'metode'      => $data['metode_bayar'],
-                        'items'       => $itemsSummary, // <--- ringkasan item untuk tampilan Aktivitas
+                        'items'       => $itemsSummary,
                     ]
                 );
 
-                // 4) Catat payment record jika ada pembayaran
+                // 4) Payment record (jika ada pembayaran)
                 if ($dibayar > 0) {
                     $payment = PaymentRecord::create([
                         'transaksi_id' => $trx->id,
@@ -214,7 +207,6 @@ class PembayaranController extends Controller
                         'created_by'   => $userId,
                     ]);
 
-                    // Log: pembayaran awal
                     Audit::log(
                         event: 'payment.added',
                         subject: $trx,
@@ -233,7 +225,7 @@ class PembayaranController extends Controller
                 return $trx;
             });
 
-            return redirect()->route('history.show', $trx)->with('success','Transaksi tersimpan.');
+            return redirect()->route('history.receipt', ['transaksi' => $trx, 'print' => 1]);
 
         } catch (\Throwable $e) {
             report($e);
@@ -272,13 +264,12 @@ class PembayaranController extends Controller
 
                 $dibayarBaru = (int)$transaksi->dibayar + (int)$data['amount'];
                 $transaksi->update([
-                    'metode_bayar'   => $data['method'], // update last method (opsional)
+                    'metode_bayar'   => $data['method'],
                     'dibayar'        => $dibayarBaru,
                     'kembalian'      => max(0, $dibayarBaru - (int)$transaksi->total_harga),
                     'payment_status' => $dibayarBaru >= (int)$transaksi->total_harga ? 'paid' : 'partial',
                 ]);
 
-                // Log: pembayaran tambahan
                 Audit::log(
                     event: 'payment.added',
                     subject: $transaksi,
@@ -326,14 +317,13 @@ class PembayaranController extends Controller
 
                         if ($pivot) {
                             $oldStock = (int)$pivot->stok;
-                            $pivot->increment('stok', (int)$it->jumlah);
+                            $pivot->increment('stok', (int)$it->jumlah); // naik stok, observer tidak perlu
                             $newStock = $oldStock + (int)$it->jumlah;
 
-                            // Ambil label
-                            $barangNama = Barang::find($pivot->barang_id)?->nama;
-                            $unitKode   = Unit::find($pivot->unit_id)?->kode;
+                            $pivot->loadMissing('barang:id,nama','unit:id,kode');
+                            $barangNama = $pivot->barang?->nama;
+                            $unitKode   = $pivot->unit?->kode;
 
-                            // Log: kembalikan stok (void)
                             Audit::log(
                                 event: 'stock.incremented',
                                 subject: $pivot,
@@ -359,15 +349,9 @@ class PembayaranController extends Controller
                     'voided_at'   => now(),
                 ]);
 
-                // Log: transaksi void
-                Audit::log(
-                    event: 'transaksi.voided',
-                    subject: $transaksi,
-                    description: "Membatalkan transaksi {$transaksi->kode_transaksi}",
-                    properties: [
-                        'reason' => $data['reason']
-                    ]
-                );
+                Audit::log('transaksi.voided', $transaksi, "Membatalkan transaksi {$transaksi->kode_transaksi}", [
+                    'reason' => $data['reason']
+                ]);
             });
 
             return back()->with('success','Transaksi di-void & stok dikembalikan.');

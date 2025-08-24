@@ -35,18 +35,25 @@
         return [
             'label' => $pick($row, ['nama','name','title','kode']),
             'qty'   => (float) $pick($row, ['qty','jumlah','total_qty','count'], 0),
-            'rev'   => (float) $pick($row, ['revenue','pendapatan','total_harga','total'], 0),
+            'rev'   => (float) $pick($row, ['omzet','revenue','pendapatan','total_harga','total'], 0),
         ];
     })->filter(fn($r) => $r['label'] !== '—')->values()->take(10);
 
-    // Normalisasi stok kritis
-    $stokKritisRows = collect($stokKritis ?? [])->map(function($row) use ($pick){
-        return [
-            'label' => $pick($row, ['nama','name','title','kode']),
-            'stok'  => $pick($row, ['stok','stock','sisa','remaining','qty'] , '0'),
-            'unit'  => $pick($row, ['satuan','unit','units.0.pivot.unit','units.0.kode','units.0.name']),
-        ];
-    })->filter(fn($r) => $r['label'] !== '—')->values();
+    // Normalisasi stok kritis → BARIS PER UNIT yang low (bukan hanya unit terendah)
+    $stokKritisRows = collect($stokKritis ?? [])->flatMap(function($row) use ($pick){
+        $nama  = $pick($row, ['nama','name','title','kode']);
+        $units = collect(data_get($row, 'units', []));
+        return $units->map(function($u) use ($nama){
+            return [
+                'label' => $nama,
+                'stok'  => (int) data_get($u, 'pivot.stok', 0),
+                'unit'  => data_get($u, 'kode', data_get($u, 'name', '—')),
+            ];
+        })->all();
+    })->values();
+
+    // Koleksi notifikasi (jika tidak ada, tetap koleksi kosong)
+    $notifications = collect($notifications ?? []);
 @endphp
 
 <div class="container-fluid py-3">
@@ -69,6 +76,63 @@
         <span class="ms-1">Excel</span>
       </a>
       @endif
+    </div>
+  </div>
+
+  <!-- Panel Notifikasi -->
+  <div class="row g-3 mb-3">
+    <div class="col-12">
+      <div class="card shadow-sm border-0" id="alerts-card">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2"/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+            <strong>Notifikasi</strong>
+          </div>
+          <span class="badge bg-primary">{{ $notifications->count() }}</span>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            @forelse($notifications as $n)
+              @php $d = $n->data ?? []; $type = $d['type'] ?? ''; @endphp
+              <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="me-3">
+                  <div class="fw-semibold">
+                    {{ $d['title'] ?? ucfirst(str_replace('_',' ', $type ?: ($n->type ?? 'Notifikasi'))) }}
+                  </div>
+                  <small class="text-muted">
+                    @if($type==='stock_out')
+                      {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — <strong>STOK HABIS</strong>
+                    @elseif($type==='stock_low')
+                      {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — sisa {{ (int)($d['stok'] ?? 0) }}
+                    @elseif($type==='cash_diff')
+                      Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
+                    @elseif($type==='below_cost')
+                      {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP (Rp {{ number_format((float)($d['hpp'] ?? 0),0,',','.') }})
+                    @elseif($type==='void_burst')
+                      {{ (int)($d['count'] ?? 0) }} void/refund hari ini
+                    @elseif($type==='daily_summary')
+                      Ringkasan penjualan {{ $d['data']['date'] ?? '' }}
+                    @else
+                      &nbsp;
+                    @endif
+                  </small>
+                </div>
+                <div class="text-end">
+                  <small class="text-muted d-block">{{ optional($n->created_at)->diffForHumans() }}</small>
+                  @if(function_exists('route') && Route::has('notifications.read') && is_null($n->read_at))
+                    <form action="{{ route('notifications.read', $n->id) }}" method="POST" class="mt-1">
+                      @csrf
+                      <button class="btn btn-sm btn-outline-secondary">Tandai dibaca</button>
+                    </form>
+                  @endif
+                </div>
+              </li>
+            @empty
+              <li class="list-group-item">Tidak ada notifikasi.</li>
+            @endforelse
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -190,9 +254,19 @@
               </thead>
               <tbody>
                 @forelse($stokKritisRows as $row)
-                  <tr class="table-warning-subtle">
+                  @php
+                    $isZero   = is_numeric($row['stok']) ? ((int)$row['stok'] <= 0) : false;
+                    $rowClass = $isZero ? 'table-danger-subtle' : 'table-warning-subtle';
+                  @endphp
+                  <tr class="{{ $rowClass }}">
                     <td class="text-truncate" style="max-width: 260px">{{ $row['label'] }}</td>
-                    <td class="text-end">{{ is_numeric($row['stok']) ? number_format($row['stok'],0,',','.') : $row['stok'] }}</td>
+                    <td class="text-end">
+                      @if($isZero)
+                        <strong>0 (Habis)</strong>
+                      @else
+                        {{ number_format((int)$row['stok'],0,',','.') }}
+                      @endif
+                    </td>
                     <td class="text-end">{{ $row['unit'] }}</td>
                   </tr>
                 @empty
@@ -226,12 +300,10 @@
   .kpi-icon{ width: 44px; height: 44px; display:grid; place-items:center; border-radius: .9rem; }
   .kpi-body .kpi-label{ font-size: .8rem; color: var(--bs-secondary-color); margin-bottom: .15rem; }
   .kpi-body .kpi-value{ font-weight: 700; font-size: 1.15rem; letter-spacing: .2px; }
+
   .kpi-body .kpi-sub{ font-size: .75rem; color: var(--bs-secondary-color); }
-
-  /* table subtle row highlight */
   .table-warning-subtle{ background: rgba(255,193,7,.08); }
-
-  /* card */
+  .table-danger-subtle{ background: rgba(220,53,69,.08); }
   .card{ border-radius: var(--card-radius); }
   .card-header{ border-bottom: 1px solid rgba(0,0,0,.06); }
 
@@ -248,7 +320,6 @@
     const el = document.getElementById('chartTopItems');
     if(!el) return;
 
-    // Ambil data asli
     const labelsFull = JSON.parse(el.getAttribute('data-labels') || '[]');
     const values = JSON.parse(el.getAttribute('data-values') || '[]');
 
@@ -256,7 +327,7 @@
     const shorten = (s) => (typeof s === 'string' && s.length > 18) ? s.slice(0, 18) + '…' : s;
     const labelsShort = labelsFull.map(shorten);
 
-    // Tinggi chart menyesuaikan jumlah bar (biar rapi untuk 8–10 item)
+    // Tinggi chart menyesuaikan jumlah bar
     el.height = Math.max(220, labelsShort.length * 28 + 30);
 
     const ctx = el.getContext('2d');
@@ -274,7 +345,7 @@
         }]
       },
       options: {
-        indexAxis: 'y', // horizontal bar agar label mudah dibaca
+        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         layout: { padding: { top: 4, right: 8, bottom: 4, left: 4 } },
@@ -282,7 +353,6 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              // Tampilkan label lengkap di judul tooltip
               title: (ctx) => labelsFull[ctx[0].dataIndex] || '',
               label: (ctx) => 'Qty: ' + (ctx.formattedValue || '0'),
             }

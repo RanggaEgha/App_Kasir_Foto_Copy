@@ -6,6 +6,8 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use App\Models\{BarangUnitPrice, KasirShift, Transaksi, TransaksiItem};
+use App\Observers\{BarangUnitPriceObserver, KasirShiftObserver, TransaksiObserver, TransaksiItemObserver};
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -25,7 +27,10 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+         BarangUnitPrice::observe(BarangUnitPriceObserver::class);
+        KasirShift::observe(KasirShiftObserver::class);
+        Transaksi::observe(TransaksiObserver::class);
+        TransaksiItem::observe(TransaksiItemObserver::class);
     }
 
     /**

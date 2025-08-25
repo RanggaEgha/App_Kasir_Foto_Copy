@@ -8,6 +8,7 @@ use App\Models\{
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use App\Services\Audit;
 
@@ -18,7 +19,7 @@ class PembayaranController extends Controller
         // Data master
         $barangs = Barang::orderBy('nama')->get(['id','nama']);
         $jasas   = Jasa::orderBy('nama')->get(['id','nama','harga_per_satuan']);
-        $units   = Unit::orderBy('kode')->get(['id','kode']);
+        $units   = Unit::orderBy('kode')->get(['id','kode']); // fallback/unit default
 
         // Peta unit/harga/stok per barang (untuk dropdown dinamis)
         $unitPrices = BarangUnitPrice::with('unit:id,kode')
@@ -29,26 +30,27 @@ class PembayaranController extends Controller
                 return $rows->map(fn($r) => [
                     'unit_id'   => $r->unit_id,
                     'unit_kode' => $r->unit?->kode,
-                    'harga'     => (int)$r->harga,
-                    'stok'      => (int)$r->stok,
+                    'harga'     => (int) $r->harga,
+                    'stok'      => (int) $r->stok,
                 ])->values();
             });
 
         return view('pos.create', [
             'barangs'            => $barangs,
             'jasas'              => $jasas,
-            'units'              => $units, // fallback
+            'units'              => $units,
             'unitPricesByBarang' => $unitPrices,
         ]);
     }
 
     public function store(Request $r)
     {
+        // Validasi input
         $data = $r->validate([
-            'metode_bayar' => ['required','in:cash,transfer,qris'],
-            'dibayar'      => ['required','integer','min:0'],
-            'reference'    => ['nullable','string','max:100'],
-            'items'        => ['required','array','min:1'],
+            'metode_bayar'        => ['required','in:cash,transfer,qris'],
+            'dibayar'             => ['required','integer','min:0'],
+            'reference'           => ['nullable','string','max:100'],
+            'items'               => ['required','array','min:1'],
 
             // Skema item (barang/jasa)
             'items.*.tipe_item'    => ['required','in:barang,jasa'],
@@ -63,7 +65,7 @@ class PembayaranController extends Controller
             'items.*.jasa_id.required_if'   => 'Jasa belum dipilih.',
         ]);
 
-        $userId = auth()->id();
+        $userId  = auth()->id();
         $shiftId = ($data['metode_bayar'] === 'cash')
             ? KasirShift::openBy($userId)->value('id')
             : null;
@@ -74,7 +76,7 @@ class PembayaranController extends Controller
         }
 
         try {
-            $trx = DB::transaction(function() use ($data, $userId, $shiftId) {
+            $trx = DB::transaction(function () use ($data, $userId, $shiftId) {
 
                 // 1) Header transaksi (awal sebagai draft)
                 $trx = Transaksi::create([
@@ -92,12 +94,12 @@ class PembayaranController extends Controller
                 Audit::log('transaksi.created', $trx, "Membuat draft transaksi {$trx->kode_transaksi}");
 
                 // 2) Detail + potong stok untuk barang
-                $grand = 0;
-                $itemsSummary = [];
+                $grand         = 0;
+                $itemsSummary  = [];
 
                 foreach ($data['items'] as $row) {
-                    $qty   = (int)$row['jumlah'];
-                    $harga = (int)$row['harga_satuan'];
+                    $qty   = (int) $row['jumlah'];
+                    $harga = (int) $row['harga_satuan'];
                     $sub   = $qty * $harga;
                     $grand += $sub;
 
@@ -112,10 +114,10 @@ class PembayaranController extends Controller
                             throw new \Exception('Stok tidak cukup untuk salah satu barang.');
                         }
 
-                        // PENTING: pakai save() agar event Eloquent terpanggil → observer jalan
+                        // Pakai save() agar event Eloquent terpanggil → observer jalan
                         $oldStock    = (int) $pivot->stok;
                         $pivot->stok = $oldStock - $qty;
-                        $pivot->save();                 // <— ini yang menembak observer
+                        $pivot->save();
                         $newStock    = (int) $pivot->stok;
 
                         $pivot->loadMissing('barang:id,nama','unit:id,kode');
@@ -127,9 +129,9 @@ class PembayaranController extends Controller
                             subject: $pivot,
                             description: "Potong stok {$barangNama} ({$unitKode}) sebanyak {$qty}",
                             properties: [
-                                'barang_id'   => (int)$pivot->barang_id,
+                                'barang_id'   => (int) $pivot->barang_id,
                                 'barang_name' => $barangNama,
-                                'unit_id'     => (int)$pivot->unit_id,
+                                'unit_id'     => (int) $pivot->unit_id,
                                 'unit_kode'   => $unitKode,
                                 'qty'         => $qty,
                                 'old_stok'    => $oldStock,
@@ -158,11 +160,12 @@ class PembayaranController extends Controller
                         ];
                     }
 
+                    // Simpan item detail
                     $trx->items()->create([
                         'tipe_item'    => $row['tipe_item'], // barang | jasa
-                        'barang_id'    => $row['tipe_item'] === 'barang' ? (int)$row['barang_id'] : null,
-                        'jasa_id'      => $row['tipe_item'] === 'jasa'   ? (int)$row['jasa_id']   : null,
-                        'unit_id'      => $row['tipe_item'] === 'barang' ? (int)$row['unit_id']   : null,
+                        'barang_id'    => $row['tipe_item'] === 'barang' ? (int) $row['barang_id'] : null,
+                        'jasa_id'      => $row['tipe_item'] === 'jasa'   ? (int) $row['jasa_id']   : null,
+                        'unit_id'      => $row['tipe_item'] === 'barang' ? (int) $row['unit_id']   : null,
                         'jumlah'       => $qty,
                         'harga_satuan' => $harga,
                         'subtotal'     => $sub,
@@ -170,7 +173,7 @@ class PembayaranController extends Controller
                 }
 
                 // 3) Finalisasi header
-                $dibayar = (int)$data['dibayar'];
+                $dibayar = (int) $data['dibayar'];
                 $trx->update([
                     'status'         => 'posted',
                     'posted_at'      => now(),
@@ -185,7 +188,7 @@ class PembayaranController extends Controller
                     subject: $trx,
                     description: "Posting transaksi {$trx->kode_transaksi}",
                     properties: [
-                        'total_harga' => (int)$grand,
+                        'total_harga' => (int) $grand,
                         'dibayar'     => $dibayar,
                         'kembalian'   => max(0, $dibayar - $grand),
                         'status_bayar'=> $dibayar >= $grand ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
@@ -194,7 +197,8 @@ class PembayaranController extends Controller
                     ]
                 );
 
-                // 4) Payment record (jika ada pembayaran)
+                // 4) Payment record (jika ada pembayaran langsung)
+                // Catatan: untuk QRIS dinamis, biasanya dibayar=0 di sini dan akan dilunasi lewat webhook.
                 if ($dibayar > 0) {
                     $payment = PaymentRecord::create([
                         'transaksi_id' => $trx->id,
@@ -212,9 +216,9 @@ class PembayaranController extends Controller
                         subject: $trx,
                         description: "Menambahkan pembayaran {$payment->method} sebesar ".number_format($payment->amount,0,',','.'),
                         properties: [
-                            'payment_id'     => (int)$payment->id,
+                            'payment_id'     => (int) $payment->id,
                             'method'         => $payment->method,
-                            'amount'         => (int)$payment->amount,
+                            'amount'         => (int) $payment->amount,
                             'reference'      => $payment->reference,
                             'shift_id'       => $payment->shift_id,
                             'transaksi_kode' => $trx->kode_transaksi,
@@ -225,6 +229,13 @@ class PembayaranController extends Controller
                 return $trx;
             });
 
+            // Opsi: jika metode QRIS dan belum ada nominal masuk, arahkan ke halaman QR (jika route tersedia)
+            if (($r->input('metode_bayar') === 'qris') && (int) $r->input('dibayar', 0) === 0 && Route::has('pembayaran.qris')) {
+                return redirect()->route('pembayaran.qris', $trx->id)
+                    ->with('success', 'QRIS dibuat. Silakan scan untuk membayar.');
+            }
+
+            // Default: ke struk
             return redirect()->route('history.receipt', ['transaksi' => $trx, 'print' => 1]);
 
         } catch (\Throwable $e) {
@@ -242,7 +253,7 @@ class PembayaranController extends Controller
         ]);
 
         try {
-            DB::transaction(function() use ($transaksi, $data) {
+            DB::transaction(function () use ($transaksi, $data) {
                 $shiftId = $data['method'] === 'cash'
                     ? KasirShift::openBy(auth()->id())->value('id')
                     : null;
@@ -255,19 +266,19 @@ class PembayaranController extends Controller
                     'transaksi_id' => $transaksi->id,
                     'direction'    => 'in',
                     'method'       => $data['method'],
-                    'amount'       => (int)$data['amount'],
+                    'amount'       => (int) $data['amount'],
                     'reference'    => $data['reference'] ?? null,
                     'paid_at'      => now(),
                     'shift_id'     => $shiftId,
                     'created_by'   => auth()->id(),
                 ]);
 
-                $dibayarBaru = (int)$transaksi->dibayar + (int)$data['amount'];
+                $dibayarBaru = (int) $transaksi->dibayar + (int) $data['amount'];
                 $transaksi->update([
                     'metode_bayar'   => $data['method'],
                     'dibayar'        => $dibayarBaru,
-                    'kembalian'      => max(0, $dibayarBaru - (int)$transaksi->total_harga),
-                    'payment_status' => $dibayarBaru >= (int)$transaksi->total_harga ? 'paid' : 'partial',
+                    'kembalian'      => max(0, $dibayarBaru - (int) $transaksi->total_harga),
+                    'payment_status' => $dibayarBaru >= (int) $transaksi->total_harga ? 'paid' : 'partial',
                 ]);
 
                 Audit::log(
@@ -275,9 +286,9 @@ class PembayaranController extends Controller
                     subject: $transaksi,
                     description: "Menambahkan pembayaran {$payment->method} sebesar ".number_format($payment->amount,0,',','.'),
                     properties: [
-                        'payment_id'     => (int)$payment->id,
+                        'payment_id'     => (int) $payment->id,
                         'method'         => $payment->method,
-                        'amount'         => (int)$payment->amount,
+                        'amount'         => (int) $payment->amount,
                         'reference'      => $payment->reference,
                         'shift_id'       => $payment->shift_id,
                         'transaksi_kode' => $transaksi->kode_transaksi,
@@ -285,7 +296,7 @@ class PembayaranController extends Controller
                 );
             });
 
-            return back()->with('success','Pembayaran tambahan tercatat.');
+            return back()->with('success', 'Pembayaran tambahan tercatat.');
 
         } catch (\Throwable $e) {
             report($e);
@@ -300,7 +311,7 @@ class PembayaranController extends Controller
         ]);
 
         try {
-            DB::transaction(function() use ($transaksi, $data) {
+            DB::transaction(function () use ($transaksi, $data) {
                 if ($transaksi->status === 'void') {
                     throw new \Exception('Transaksi sudah dibatalkan.');
                 }
@@ -316,9 +327,9 @@ class PembayaranController extends Controller
                             ->first();
 
                         if ($pivot) {
-                            $oldStock = (int)$pivot->stok;
-                            $pivot->increment('stok', (int)$it->jumlah); // naik stok, observer tidak perlu
-                            $newStock = $oldStock + (int)$it->jumlah;
+                            $oldStock = (int) $pivot->stok;
+                            $pivot->increment('stok', (int) $it->jumlah); // naik stok (observer tidak wajib)
+                            $newStock = $oldStock + (int) $it->jumlah;
 
                             $pivot->loadMissing('barang:id,nama','unit:id,kode');
                             $barangNama = $pivot->barang?->nama;
@@ -329,11 +340,11 @@ class PembayaranController extends Controller
                                 subject: $pivot,
                                 description: "Kembalikan stok {$barangNama} ({$unitKode}) karena void transaksi {$transaksi->kode_transaksi}",
                                 properties: [
-                                    'barang_id'   => (int)$pivot->barang_id,
+                                    'barang_id'   => (int) $pivot->barang_id,
                                     'barang_name' => $barangNama,
-                                    'unit_id'     => (int)$pivot->unit_id,
+                                    'unit_id'     => (int) $pivot->unit_id,
                                     'unit_kode'   => $unitKode,
-                                    'qty'         => (int)$it->jumlah,
+                                    'qty'         => (int) $it->jumlah,
                                     'old_stok'    => $oldStock,
                                     'new_stok'    => $newStock,
                                 ]
@@ -354,7 +365,7 @@ class PembayaranController extends Controller
                 ]);
             });
 
-            return back()->with('success','Transaksi di-void & stok dikembalikan.');
+            return back()->with('success', 'Transaksi di-void & stok dikembalikan.');
 
         } catch (\Throwable $e) {
             report($e);
@@ -364,6 +375,7 @@ class PembayaranController extends Controller
 
     protected function generateKode(): string
     {
-        return 'TRX' . now()->format('YmdHis') . Str::upper(Str::random(3));
+        // TRX + timestamp + 3 huruf acak → probabilitas tabrakan sangat kecil.
+        return 'TRX'.now()->format('YmdHis').Str::upper(Str::random(3));
     }
 }

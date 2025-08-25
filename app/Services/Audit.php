@@ -7,6 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Audit
 {
+    /**
+     * Catat audit log sederhana.
+     *
+     * @param  string       $event        Nama event (mis. 'payment.added')
+     * @param  Model|null   $subject      Model yang terkait (opsional)
+     * @param  string|null  $description  Deskripsi singkat (opsional)
+     * @param  array        $properties   Properti tambahan, akan disimpan sebagai JSON (opsional)
+     */
     public static function log(string $event, ?Model $subject = null, ?string $description = null, array $properties = []): void
     {
         try {

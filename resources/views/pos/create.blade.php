@@ -48,8 +48,10 @@
 
   /* Command palette (Cari) */
   .picker-wrap{position:relative}
-  .picker-input{height:46px;font-size:1rem;border-radius:12px;padding-left:44px;autocomplete:off;
-    background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 14px center;background-size:18px}
+  .picker-input{
+    height:46px;font-size:1rem;border-radius:12px;padding-left:44px;
+    background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 14px center;background-size:18px
+  }
   .picker-hint{font-size:.85rem;color:var(--muted);margin-top:4px}
   .picker-results{position:absolute;z-index:1050;left:0;right:0;top:50px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 12px 28px rgba(2,6,23,.18);max-height:320px;overflow:auto}
   .picker-item{padding:.6rem .9rem;display:flex;align-items:center;gap:.5rem;cursor:pointer}
@@ -316,6 +318,10 @@
               </select>
             </div>
 
+            <div id="qrisHint" class="alert alert-info d-none">
+              Jika memilih <b>QRIS</b>, biarkan <i>Nominal Dibayar</i> = Rp0. Setelah scan & sukses, sistem akan menandai pembayaran otomatis.
+            </div>
+
             <div class="mb-3">
               <label class="form-label">Nominal Dibayar (Rp)</label>
               <input id="dibayar_view" type="text" class="form-control money" value="0">
@@ -386,6 +392,7 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
     b.type='button'; b.className='btn btn-sm btn-soft pill';
     b.textContent=rupiah(v);
     b.onclick=()=>{
+      if ($id('dibayar_view').disabled) return; // jika QRIS, nonaktif
       const now=clean($id('dibayar').value); const next=now+v;
       $id('dibayar').value=next; $id('dibayar_view').value=idFormat(next); hitungKembalian();
     };
@@ -629,21 +636,36 @@ function hitungKembalian(){
   $id('kembalianView').textContent = rupiah(kembali);
 }
 $id('btnUangPas').addEventListener('click', ()=>{
+  if ($id('dibayar_view').disabled) return; // QRIS → nonaktif
   let total=0; cart.forEach(it=> total+=it.harga*it.qty);
   $id('dibayar').value = total; $id('dibayar_view').value = idFormat(total); hitungKembalian();
 });
+
+/* Metode bayar → UX QRIS */
+const metodeSel = $id('metodeBayar');
+function onMetodeChange(){
+  const isQris = metodeSel.value === 'qris';
+  $id('dibayar_view').disabled = isQris;
+  $id('btnUangPas').disabled   = isQris;
+  document.querySelectorAll('#quickCash button').forEach(b=> b.disabled = isQris);
+  $id('qrisHint').classList.toggle('d-none', !isQris);
+  if (isQris){
+    $id('dibayar').value = 0; $id('dibayar_view').value = idFormat(0); hitungKembalian();
+  }
+}
+metodeSel.addEventListener('change', onMetodeChange);
 
 /* shortcuts */
 document.addEventListener('keydown',(e)=>{
   if(e.key==='F2'){ e.preventDefault(); document.querySelector('#barang-tab')?.click(); btnDaftarB.click(); }
   if(e.key==='F3'){ e.preventDefault(); document.querySelector('#jasa-tab')?.click(); btnDaftarJ.click(); }
-  if(e.key==='F4'){ e.preventDefault(); $id('dibayar_view')?.focus(); }
+  if(e.key==='F4'){ e.preventDefault(); if(!$id('dibayar_view').disabled) $id('dibayar_view')?.focus(); }
   if(e.key==='F9'){ e.preventDefault(); document.getElementById('posForm').requestSubmit(); }
 });
 
 /* init */
 bindMoneyInput($id('dibayar_view'), raw => { $id('dibayar').value=raw; hitungKembalian(); });
 bindMoneyInput($id('hargaBarang')); bindMoneyInput($id('hargaJasa'));
-renderBarangGrid('*'); renderJasaGrid('*'); renderCart();
+renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange();
 </script>
 @endsection

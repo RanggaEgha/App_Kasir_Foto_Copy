@@ -41,4 +41,6 @@ Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blad
 - **React + Inertia (Breeze)** untuk halaman autentikasi
 - **Chart.js** (via CDN) untuk grafik
 - **Carbon**, **barryvdh/laravel-dompdf**, **maatwebsite/excel**
+- ![License: MIT](https://img.shields.io/badge/License-MIT-green)
+
   

@@ -1,11 +1,9 @@
-* text=auto eol=lf
+# ===== GitHub Linguist tuning =====
+public/build/**          linguist-generated
+public/js/**/*.min.js    linguist-generated
+public/css/**/*.min.css  linguist-generated
 
-*.blade.php diff=html
-*.css diff=css
-*.html diff=html
-*.md diff=markdown
-*.php diff=php
+public/vendor/**         linguist-vendored
+docs/**                  linguist-documentation
 
-/.github export-ignore
-CHANGELOG.md export-ignore
-.styleci.yml export-ignore
+*.blade.php              linguist-language=Blade

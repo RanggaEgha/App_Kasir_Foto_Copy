@@ -9,12 +9,12 @@
   <a href="#"><img src="https://img.shields.io/badge/Blade-Templating-0A0A0A?logo=laravel&logoColor=white" alt="Blade"></a>
   <a href="#"><img src="https://img.shields.io/badge/CoreUI-Admin-2CA5E0?logo=bootstrap&logoColor=white" alt="CoreUI"></a>
 </p>
-![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
 
 Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blade + CoreUI**, autentikasi pakai **React/Inertia (Breeze)**. Laporan memakai **Chart.js**.
 
 ---
+![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
 ## Fitur
 

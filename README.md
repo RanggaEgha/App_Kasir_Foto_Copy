@@ -10,16 +10,18 @@
   <a href="#"><img src="https://img.shields.io/badge/CoreUI-Admin-2CA5E0?logo=bootstrap&logoColor=white" alt="CoreUI"></a>
 </p>
 
-
 Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blade + CoreUI**, autentikasi pakai **React/Inertia (Breeze)**. Laporan memakai **Chart.js**.
 
----
+> Catatan ejaan: proyek ini menggunakan istilah **Omset**.
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
+
+---
 
 ## Fitur
 
 - **Transaksi (POS)**
-  - Barang & jasa dalam satu struk, diskon/retur/void.
+  - Barang & jasa dalam satu struk; diskon/retur/void.
   - Shift kasir & pencatatan pembayaran (cash/transfer/QRIS).
 - **Master Data**
   - Barang dengan **unit harga** (pcs/pack/box, dst), Jasa, Supplier.
@@ -27,7 +29,7 @@ Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blad
 - **Dashboard & Laporan**
   - KPI: Omset **harian** & **mingguan**, item terlaris, stok kritis.
   - **Top 10** item (hari ini) + ekspor **PDF**/**Excel**.
-  - Grafik: Chart.js (harian/mingguan/bulanan/tahunan dapat diperluas).
+  - Grafik: Chart.js; dapat diperluas ke harian (Senin–Minggu), bulanan (Jan–Des), tahunan (rentang dinamis).
 - **Notifikasi**
   - Stok rendah/habis, penjualan di bawah HPP, void tinggi, selisih kas, ringkasan harian (email + database).
 - **Penjadwalan**
@@ -41,6 +43,54 @@ Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blad
 - **Blade + CoreUI** untuk admin/kasir
 - **React + Inertia (Breeze)** untuk halaman autentikasi
 - **Chart.js** (via CDN) untuk grafik
-- **Carbon**, **barryvdh/laravel-dompdf**, **maatwebsite/excel**
+- **Carbon**, **barryvdh/laravel-dompdf** (PDF), **maatwebsite/excel** (Excel)
 
-  
+---
+
+## Peran & Hak Akses
+
+Aplikasi menggunakan kolom `users.role` (`admin` / `kasir`) dan `users.is_active` untuk mengatur akses.  
+Gate: `admin` dan `kasir` (lihat `App\Providers\AuthServiceProvider`).  
+Middleware: `role` (404 bila tak berhak) & `active` (paksa logout jika nonaktif).
+
+| Fitur / Menu                                        | Kasir | Admin |
+| ---                                                 | :--:  | :--:  |
+| **Dashboard (analitik + ekspor PDF/Excel)**         |  —    |  ✅   |
+| **Barang** (CRUD + unit harga)                      |  ✅   |  ✅   |
+| **Jasa** (CRUD)                                     |  ✅   |  ✅   |
+| **POS / Pembayaran** (buat/bayar/void struk)        |  ✅   |  ✅   |
+| **Shift Kasir** (buka/tutup, selisih kas)           |  ✅   |  ✅   |
+| **History Transaksi** + **Cetak Struk**             |  ✅   |  ✅   |
+| **Supplier** (CRUD)                                 |  —    |  ✅   |
+| **Purchase Order** (CRUD)                           |  —    |  ✅   |
+| **Manajemen User** (buat/edit/role/aktif-nonaktif)  |  —    |  ✅   |
+| **Audit Log – Global**                              |  —    |  ✅   |
+| **Audit Log – Aktivitas Saya**                      |  ✅   |  ✅   |
+| **Notifikasi (in-app) & tandai dibaca**             |  ✅   |  ✅   |
+| **Ringkasan Harian via Email (`ADMIN_EMAIL`)**      |  —    |  ✅   |
+
+> Sidebar Blade menggunakan `@can('admin')`, `@can('kasir')`, dan `@canany(...)` untuk menampilkan menu sesuai role.  
+> Rute `admin-only`: `/dashboard*`, `/suppliers*`, `/purchases*`, `/users*`, `/audit-logs*`.  
+> Rute `kasir,admin`: `/barang*`, `/jasa*`, `/pembayaran*`, `/shift*`, `/history*`, notifikasi, audit pribadi.
+
+---
+
+## Manajemen Pengguna & Role
+
+- **Tambah Admin via Seeder (opsional)**
+  1. Set di `.env`:
+     ```
+     ADMIN_EMAIL=admin@gmail.com
+     ADMIN_PASSWORD=123
+     ```
+  2. Jalankan:
+     ```bash
+     php artisan db:seed --class=Database\\Seeders\\AdminUserSeeder
+     ```
+  Seeder membuat/menyetel user admin (nama: *Administrator*).
+
+- **Buat/Kelola User (Admin)**
+  - Menu **Users** → buat/edit user, pilih **Role** (`admin`/`kasir`) dan **Status** (`Aktif`/`Nonaktif`).
+  - `is_active=false` akan memaksa logout user saat login (middleware `active`).
+
+---

@@ -1,9 +1,16 @@
+
+---
+
+# `.gitattributes` (supaya panel “Languages” GitHub akurat)
+
+File `.gitattributes` kamu **sudah ada**. Edit dan **tambahkan** baris berikut di akhir:
+
+```gitattributes
 # ===== GitHub Linguist tuning =====
 public/build/**          linguist-generated
 public/js/**/*.min.js    linguist-generated
 public/css/**/*.min.css  linguist-generated
+public/coreui/**         linguist-vendored
 
-public/vendor/**         linguist-vendored
 docs/**                  linguist-documentation
-
 *.blade.php              linguist-language=Blade

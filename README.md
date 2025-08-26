@@ -12,7 +12,6 @@
 
 Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blade + CoreUI**, autentikasi pakai **React/Inertia (Breeze)**. Laporan memakai **Chart.js**.
 
-> Catatan ejaan: proyek ini menggunakan istilah **Omset**.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 

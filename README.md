@@ -41,16 +41,4 @@ Aplikasi kasir untuk usaha fotokopi/print & penjualan ATK. UI utama pakai **Blad
 - **React + Inertia (Breeze)** untuk halaman autentikasi
 - **Chart.js** (via CDN) untuk grafik
 - **Carbon**, **barryvdh/laravel-dompdf**, **maatwebsite/excel**
-- 
-## Tech Stack
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel&logoColor=white&style=for-the-badge" alt="Laravel" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black&style=for-the-badge" alt="React" />
-  <img src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white&style=for-the-badge" alt="Vite" />
-  <img src="https://img.shields.io/badge/PHP-8.1+-777BB4?logo=php&logoColor=white&style=for-the-badge" alt="PHP" />
-  <img src="https://img.shields.io/badge/MySQL%2F-MariaDB-4479A1?logo=mysql&logoColor=white&style=for-the-badge" alt="MySQL/MariaDB" />
-  <img src="https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs&logoColor=white&style=for-the-badge" alt="Chart.js" />
-  <img src="https://img.shields.io/badge/Blade-Templating-0A0A0A?logo=laravel&logoColor=white&style=for-the-badge" alt="Blade" />
-  <img src="https://img.shields.io/badge/CoreUI-Admin-2CA5E0?logo=bootstrap&logoColor=white&style=for-the-badge" alt="CoreUI" />
-</p>
+  

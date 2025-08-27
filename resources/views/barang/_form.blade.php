@@ -15,14 +15,23 @@
 
 <style>
   #barang-form .card { border:0; border-radius:16px; }
-  #barang-form .card-header { background:linear-gradient(135deg,#f8fafc,#eef2f7); border-bottom:1px solid #e9edf3; }
+  #barang-form .card-header { background:linear-gradient(135deg,#f8fafc,#fff); border-bottom:1px solid #e9edf3; }
   #barang-form .help { font-size:.85rem; color:#718096; }
   #barang-form .btn-danger { background:#e6707c; border-color:#e6707c; }
   #barang-form .btn-danger:hover { background:#da5a68; border-color:#da5a68; }
-  #barang-form .unit-box { border:1px dashed #dfe6ef; border-radius:14px; background:#fafcff; padding:1rem; }
-  #barang-form .unit-pill { display:inline-block; padding:.35rem .6rem; border-radius:999px; background:#f1f6ff; border:1px solid #d9e6ff; font-weight:600; color:#0d6efd; }
+  #barang-form .unit-box { border:1px dashed rgba(164,25,61,.25); border-radius:14px; background:#fff7f0; padding:1rem; }
+  #barang-form .unit-pill { display:inline-block; padding:.35rem .6rem; border-radius:999px; background:var(--peach); border:1px solid rgba(164,25,61,.25); font-weight:700; color:var(--brand); }
   #barang-form .field-note { font-size:.8rem; color:#8a94a6; }
   #barang-form .form-check-input { cursor:pointer; }
+  /* Buttons brand inside form */
+  #barang-form .btn-primary{ background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: var(--brand-2); box-shadow: 0 6px 18px rgba(164,25,61,.28); }
+  #barang-form .btn-primary:hover{ filter:brightness(1.05); }
+  #barang-form .btn-outline-primary{ color: var(--brand); border-color: rgba(164,25,61,.45); }
+  #barang-form .btn-outline-primary:hover{ background: rgba(255,223,185,.65); color: var(--brand); border-color: rgba(164,25,61,.55); }
+  /* Invalid + shake */
+  .is-invalid{ border-color:#dc3545 !important; box-shadow:0 0 0 .15rem rgba(220,53,69,.15); }
+  @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px);} 30%, 50%, 70% { transform: translateX(-4px);} 40%, 60% { transform: translateX(4px);} }
+  .shake{ animation: shake .28s ease-in-out 0s 1; }
 </style>
 
 <div id="barang-form" x-data="stokForm()" x-init="init(
@@ -40,15 +49,22 @@
     <div class="card-body">
       <div class="row g-3 align-items-center">
         <div class="col-md-3">
+          @php
+            $tempImage = old('temp_image', session('temp_image_path'));
+            $previewUrl = $tempImage
+              ? asset('storage/'.$tempImage)
+              : ($barang?->image_url ?: 'https://dummyimage.com/600x600/e9eef6/7a869a&text=No+Image');
+          @endphp
           <div style="position:relative; width:160px; aspect-ratio:1/1; border:1px solid #e6e6ef; border-radius:12px; overflow:hidden; background:#fafbff;">
             <img id="previewImg"
-                 src="{{ $barang?->image_url ?: 'https://dummyimage.com/600x600/e9eef6/7a869a&text=No+Image' }}"
+                 src="{{ $previewUrl }}"
                  alt="Preview"
                  style="width:100%; height:100%; object-fit:cover;">
           </div>
         </div>
         <div class="col-md-9">
           <input type="file" name="image" id="imageInput" class="form-control" accept="image/*">
+          <input type="hidden" name="temp_image" id="tempImageInput" value="{{ $tempImage }}">
           <small class="text-muted d-block mt-2">
             Biarkan kosong jika tidak ingin mengubah gambar.
           </small>
@@ -72,6 +88,9 @@
           <input name="nama" type="text" class="form-control" placeholder="cth: Kertas HVS A4 80gsm"
                  value="{{ old('nama', $barang->nama ?? '') }}" required>
           <div class="field-note mt-1">Gunakan nama spesifik agar mudah dicari.</div>
+          @error('nama')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+          @enderror
         </div>
         <div class="col-md-6">
           <label class="form-label">Kategori</label>
@@ -117,19 +136,24 @@
               <div x-show="unitsSel.includes('{{ $uid }}')" x-cloak x-transition>
                 <div class="mb-2">
                   <label class="form-label mb-1">Stok ({{ $u->kode }})</label>
-                  <input type="number" min="0" class="form-control"
+                  @php $errSt = $errors->has('stok.'.$uid); @endphp
+                  <input type="number" min="0" class="form-control {{ $errSt ? 'is-invalid shake' : '' }}"
                          placeholder="cth: 120"
                          :name="`stok[{{ $uid }}]`"
                          x-model="stok['{{ $uid }}']"
                          @input="onStokInput($event,'{{ $uid }}')"
                          @change="onStokInput($event,'{{ $uid }}')">
+                  @error("stok.$uid")
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                  @enderror
                 </div>
 
                 <div>
                   <label class="form-label mb-1">Harga ({{ $u->kode }})</label>
                   <div class="input-group">
                     <span class="input-group-text">Rp</span>
-                    <input type="text" class="form-control"
+                    @php $errHg = $errors->has('harga.'.$uid); @endphp
+                    <input type="text" class="form-control {{ $errHg ? 'is-invalid shake' : '' }}"
                            :id="`harga_show_{{ $uid }}`"
                            :value="formatDisplay(harga['{{ $uid }}'])"
                            @input="onHargaInput($event,'{{ $uid }}')">
@@ -138,6 +162,9 @@
                            :value="harga['{{ $uid }}'] ?? ''">
                   </div>
                   <div class="field-note mt-1">Masukkan harga per <b>{{ $u->kode }}</b>.</div>
+                  @error("harga.$uid")
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                  @enderror
                 </div>
               </div>
             </div>
@@ -163,7 +190,9 @@
         const f = e.target.files?.[0];
         if (!f) return;
         const r = new FileReader();
-        r.onload = () => img.src = r.result;
+        r.onload = () => {
+          img.src = r.result;
+        };
         r.readAsDataURL(f);
       });
     }

@@ -2,6 +2,7 @@
 @section('title','Daftar Barang')
 
 @section('content')
+@include('partials.neo-theme')
 <style>
   /* Spacing dari header halaman */
   #barang-index{ margin-top:14px; }
@@ -21,8 +22,8 @@
 
   /* ===== Filter ===== */
   .filter-wrap{position:relative}
-  .btn-filter{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:.5rem .75rem;background:#eef5ff;border:1px solid #d9e6ff;color:#0d6efd;font-weight:600}
-  .btn-filter:hover{background:#e2efff;border-color:#c9ddff;color:#0b5ed7}
+  .btn-filter{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:.5rem .75rem;background:rgba(255,223,185,.45);border:1px solid rgba(164,25,61,.25);color:var(--brand);font-weight:600}
+  .btn-filter:hover{background:rgba(255,223,185,.65);border-color:rgba(164,25,61,.35);color:var(--brand)}
   .btn-filter .ic{width:18px;height:18px}
   .filter-dropdown{position:absolute;z-index:30;top:110%;left:0;min-width:320px;max-width:min(92vw,560px);background:#fff;border:1px solid #e6ebf2;border-radius:14px;box-shadow:0 12px 28px rgba(13,110,253,.08);padding:14px;display:none}
   .filter-dropdown.open{display:block}
@@ -31,13 +32,30 @@
   .filter-dropdown .form-control,.filter-dropdown .form-select{border-radius:12px}
   .filter-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 
+  /* Brand buttons (scoped) */
+  #barang-index .btn-primary{
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    border-color: var(--brand-2);
+    box-shadow: 0 6px 18px rgba(164,25,61,.28);
+  }
+  #barang-index .btn-primary:hover{ filter:brightness(1.05); }
+  #barang-index .btn-outline-primary{
+    color: var(--brand);
+    border-color: rgba(164,25,61,.45);
+  }
+  #barang-index .btn-outline-primary:hover{
+    background: rgba(255,223,185,.65);
+    color: var(--brand);
+    border-color: rgba(164,25,61,.55);
+  }
+
   /* ===== Grid (kartu) ===== */
   .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
   .item-card{display:flex;flex-direction:column;gap:10px;border:1px solid #e6ebf2;border-radius:16px;background:#fff;padding:14px;transition:transform .15s, box-shadow .15s, border-color .15s}
-  .item-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(13,110,253,.08);border-color:#dbe4f0}
+  .item-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(164,25,61,.08);border-color:rgba(164,25,61,.18)}
   .card-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
   .name{font-weight:700;font-size:1.04rem;line-height:1.2}
-  .badge-cat{background:#eef5ff;color:#0d6efd;border:1px solid #d9e6ff;font-weight:600}
+  .badge-cat{background:var(--peach);color:var(--brand);border:1px solid rgba(164,25,61,.25);font-weight:600}
 
   /* Unit chips */
   .unit-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.35rem .6rem;border-radius:12px;border:1px solid #e6ebf2;background:#f9fbfd;font-size:.86rem}
@@ -62,8 +80,8 @@
   /* Actions (grid) */
   .actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:auto;flex-wrap:nowrap}
   .actions .btn{border-radius:10px;white-space:nowrap}
-  #barang-index .btn-unit{background:#eef5ff;border:1px solid #d9e6ff;color:#0d6efd;padding-inline:10px 12px;display:inline-flex;align-items:center;gap:6px;max-width:150px}
-  #barang-index .btn-unit:hover{background:#e2efff;border-color:#c9ddff;color:#0b5ed7}
+  #barang-index .btn-unit{background:rgba(255,223,185,.45);border:1px solid rgba(164,25,61,.25);color:var(--brand);padding-inline:10px 12px;display:inline-flex;align-items:center;gap:6px;max-width:150px}
+  #barang-index .btn-unit:hover{background:rgba(255,223,185,.65);border-color:rgba(164,25,61,.35);color:var(--brand)}
   .btn-detail .ic{width:16px;height:16px;margin-right:2px}
   .btn-detail .label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:110px}
   #barang-index .btn-warning{background:#f7c948;border-color:#f7c948;color:#3b2f00}
@@ -117,7 +135,9 @@
             <div class="filter-row">
               <label for="q">Cari</label>
               <div class="input-group">
-                <span class="input-group-text">🔎</span>
+                <span class="input-group-text" aria-hidden="true">
+                  <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
                 <input id="q" type="text" class="form-control" placeholder="Nama / kategori / keterangan…">
               </div>
             </div>
@@ -163,6 +183,7 @@
   </div>
 
   <div class="card-body">
+    @include('partials.flash-neo')
     {{-- ====================== GRID MODE ====================== --}}
     <div id="gridWrap" class="grid">
       @forelse($barangs as $b)

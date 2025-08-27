@@ -116,10 +116,10 @@ Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
     Route::get('/audit-logs',            [AuditLogController::class, 'index'])->name('audit.index');
     Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit.show');
 
-    // Notifikasi (admin) — tandai dibaca
+    // Notifikasi (admin) — tandai dibaca (per item)
     Route::post('/notifications/{id}/read', function (string $id) {
         $n = DatabaseNotification::findOrFail($id);
-        // Amankan: hanya boleh menandai punya dirinya (admin yang login)
+        // Amankan: hanya boleh menandai notifikasi milik dirinya
         abort_unless(
             $n->notifiable_type === User::class && $n->notifiable_id === auth()->id(),
             403
@@ -128,11 +128,21 @@ Route::middleware(['auth', 'active', 'role:admin'])->group(function () {
         return back();
     })->name('notifications.read');
 
-    // (Opsional) tandai semua notifikasi sebagai dibaca
+    // Tandai semua notifikasi sebagai dibaca (hanya milik user login)
     Route::post('/notifications/read-all', function () {
         auth()->user()?->unreadNotifications()?->update(['read_at' => now()]);
         return back();
     })->name('notifications.read_all');
+
+    // Bersihkan semua notifikasi (hapus) milik user login
+    Route::delete('/notifications/clear', function () {
+        DatabaseNotification::query()
+            ->where('notifiable_type', User::class)
+            ->where('notifiable_id', auth()->id())
+            ->delete();
+
+        return back();
+    })->name('notifications.clear');
 });
 
 

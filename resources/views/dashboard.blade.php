@@ -33,20 +33,45 @@
         ];
     })->filter(fn($r) => $r['label'] !== '—')->values()->take(10);
 
-    // Stok kritis per unit
+    // Stok kritis per unit (+ sematkan barang_id & unit_id)
     $stokKritisRows = collect($stokKritis ?? [])->flatMap(function($row) use ($pick){
         $nama  = $pick($row, ['nama','name','title','kode']);
+        $id    = data_get($row, 'id'); // barang_id
         $units = collect(data_get($row, 'units', []));
-        return $units->map(function($u) use ($nama){
+        return $units->map(function($u) use ($nama, $id){
             return [
-                'label' => $nama,
-                'stok'  => (int) data_get($u, 'pivot.stok', 0),
-                'unit'  => data_get($u, 'kode', data_get($u, 'name', '—')),
+                'id'      => $id,                              // barang_id
+                'label'   => $nama,
+                'stok'    => (int) data_get($u, 'pivot.stok', 0),
+                'unit'    => data_get($u, 'kode', data_get($u, 'name', '—')),
+                'unit_id' => data_get($u, 'id'),
             ];
         })->all();
     })->filter(fn($r)=> $r['unit'] !== '—')->values();
 
-    $notifications = collect($notifications ?? []);
+    // Set pasangan barang:unit yang MASIH kritis (untuk saring notif yang sudah resolved)
+    $kritPairsSet = $stokKritisRows
+        ->map(fn($r) => ($r['id'] ?? '').':'.($r['unit_id'] ?? ''))
+        ->unique()
+        ->all();
+
+    // Notifikasi → saring agar stock_low/stock_out hilang otomatis jika sudah tidak kritis
+    $notifications  = collect($notifications ?? []);
+    $notifFiltered  = $notifications->filter(function($n) use ($kritPairsSet){
+        $d = $n->data ?? [];
+        $t = $d['type'] ?? '';
+        if (in_array($t, ['stock_low','stock_out'])) {
+            $pair = ($d['barang_id'] ?? '').':'.($d['unit_id'] ?? '');
+            return in_array($pair, $kritPairsSet);
+        }
+        return true;
+    })->values();
+
+    // Kondisi tombol header notifikasi
+    $hasAnyNotif   = $notifFiltered->isNotEmpty();
+    $unreadCount   = $notifFiltered->whereNull('read_at')->count();
+    $notifCount    = $notifFiltered->count();
+
     $critTotal = $stokKritisRows->count();
 @endphp
 
@@ -74,7 +99,6 @@
 
           @if(function_exists('route') && Route::has('dashboard.pdf'))
           <a href="{{ route('dashboard.pdf') }}" class="btn-ghost">
-            {{-- Icon: File-Text --}}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -87,7 +111,6 @@
 
           @if(function_exists('route') && Route::has('dashboard.excel'))
           <a href="{{ route('dashboard.excel') }}" class="btn-ghost">
-            {{-- Icon: File-Grid --}}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -176,20 +199,41 @@
 
       <div class="col-12 col-xl-5">
         <div class="neo-card pair-card" id="notif-card">
-          <div class="neo-card__head d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
+          <div class="neo-card__head d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2"/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
               <h2 class="h6 m-0">Notifikasi</h2>
+
+              {{-- Actions di sebelah teks "Notifikasi" --}}
+              <div class="notif-actions d-inline-flex align-items-center gap-1">
+                @if($unreadCount > 0 && function_exists('route') && Route::has('notifications.read_all'))
+                  <form action="{{ route('notifications.read_all') }}" method="POST" class="d-inline-block">
+                    @csrf
+                    <button class="btn btn-xxs btn-ghost" title="Tandai semua dibaca">Baca semua</button>
+                  </form>
+                @endif
+
+                @if($hasAnyNotif && function_exists('route') && Route::has('notifications.clear'))
+                  <form action="{{ route('notifications.clear') }}" method="POST" class="d-inline-block"
+                        onsubmit="return confirm('Bersihkan semua notifikasi?')">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn btn-xxs btn-ghost" title="Hapus semua notifikasi">Hapus semua</button>
+                  </form>
+                @endif
+              </div>
             </div>
-            <span class="badge badge-peach">{{ $notifications->count() }}</span>
+
+            {{-- Badge jumlah notif (kontras) --}}
+            <span class="badge badge-peach" aria-label="Total notifikasi">{{ $notifCount }}</span>
           </div>
 
           <div class="neo-card__body">
-            @if($notifications->isEmpty())
+            @if(!$hasAnyNotif)
               <div class="muted">Tidak ada notifikasi.</div>
             @else
               <div class="notif-list nice-scroll">
-                @foreach($notifications as $n)
+                @foreach($notifFiltered as $n)
                   @php
                     $d = $n->data ?? [];
                     $type = $d['type'] ?? '';
@@ -203,6 +247,7 @@
                       default       => 'secondary'
                     };
                   @endphp
+
                   <div class="notif-item tone-{{ $tone }}">
                     <div class="icon">
                       @if($type==='stock_out')
@@ -221,7 +266,8 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2"/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
                       @endif
                     </div>
-                    <div class="content">
+
+                    <div class="content w-100">
                       <div class="title">
                         {{ $d['title'] ?? ucfirst(str_replace('_',' ', $type ?: ($n->type ?? 'Notifikasi'))) }}
                       </div>
@@ -242,14 +288,23 @@
                           &nbsp;
                         @endif
                       </div>
-                      <div class="meta">
+
+                      <div class="meta d-flex align-items-center justify-content-between mt-1">
                         <span class="time">{{ optional($n->created_at)->diffForHumans() }}</span>
-                        @if(function_exists('route') && Route::has('notifications.read') && is_null($n->read_at))
-                        <form action="{{ route('notifications.read', $n->id) }}" method="POST" class="d-inline ms-2">
-                          @csrf
-                          <button class="btn btn-xs btn-ghost">Tandai dibaca</button>
-                        </form>
-                        @endif
+                        <div class="meta-actions d-inline-flex align-items-center gap-1">
+                          {{-- Aksi cepat: Isi stok (menuju edit barang) --}}
+                          @if(in_array(($d['type'] ?? ''), ['stock_low', 'stock_out']) && function_exists('route') && Route::has('barang.edit') && !empty($d['barang_id']))
+                            <a href="{{ route('barang.edit', $d['barang_id']) }}" class="btn btn-xxs btn-ghost">Isi stok</a>
+                          @endif
+
+                          {{-- Tandai dibaca (per item) --}}
+                          @if(function_exists('route') && Route::has('notifications.read') && is_null($n->read_at))
+                          <form action="{{ route('notifications.read', $n->id) }}" method="POST" class="d-inline-block">
+                            @csrf
+                            <button class="btn btn-xxs btn-ghost">Tandai dibaca</button>
+                          </form>
+                          @endif>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -302,7 +357,7 @@
       </div>
 
       <div class="col-12 col-xl-5">
-        {{-- ====== STOK KRITIS (DESAIN BARU) ====== --}}
+        {{-- ====== STOK KRITIS ====== --}}
         <div class="neo-card pair-card" id="krit-card">
           <div class="neo-card__head d-flex justify-content-between align-items-center">
             <h2 class="h6 m-0">Stok Kritis</h2>
@@ -322,6 +377,9 @@
                       <span class="tag {{ $isZero ? 'tag-danger' : 'tag-warn' }}">
                         {{ $isZero ? 'Habis' : 'Sisa '.number_format((int)$row['stok'],0,',','.') }}
                       </span>
+                      @if(function_exists('route') && Route::has('barang.edit') && !empty($row['id']))
+                      <a href="{{ route('barang.edit', $row['id']) }}" class="btn btn-xxs btn-ghost ms-1">Isi stok</a>
+                      @endif
                     </div>
                   </div>
                 @endforeach
@@ -424,6 +482,21 @@
   }
   .btn-ghost:hover{ background:rgba(255,223,185,.45) !important; border-color:rgba(164,25,61,.35) !important; color:var(--brand) !important; transform:translateY(-1px); }
 
+  /* Chip size untuk aksi kecil (header & meta) */
+  .btn-xxs{ font-size:.74rem; padding:.35rem .6rem; border-radius:.8rem; line-height:1; }
+
+  .badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:28px; height:22px; border-radius:999px;
+    font-weight:800; font-size:.78rem; padding:0 .5rem;
+  }
+  /* Badge peach: kontras teks agar angka terlihat */
+  .badge-peach{
+    background: var(--peach);
+    color: var(--brand) !important;
+    border:1px solid rgba(164,25,61,.25);
+  }
+
   .table-shell{ background:var(--bg); border:1px solid rgba(2,6,23,.07); border-radius:12px; padding:.4rem; box-shadow:0 10px 26px rgba(164,25,61,.10); }
   .table-head-soft th{ background:#F6EEF2; border-bottom:1px solid rgba(164,25,61,.12); font-weight:700; }
   .table td, .table th{ padding:.9rem 1rem; }
@@ -450,6 +523,7 @@
   .notif-item .content .title{ font-weight:700; }
   .notif-item .content .desc{ color:var(--muted); }
   .notif-item .content .meta{ font-size:.78rem; color:var(--muted); margin-top:.2rem; }
+  .meta-actions .btn{ white-space:nowrap; }
 
   /* STOK KRITIS */
   .crit-list{ display:flex; flex-direction:column; gap:.75rem; height: calc(5 * var(--crit-row-h) + 4 * .75rem); overflow:auto; }

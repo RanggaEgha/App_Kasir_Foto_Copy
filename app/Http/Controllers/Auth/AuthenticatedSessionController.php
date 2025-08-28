@@ -23,13 +23,22 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request) /* RedirectResponse not needed; we return Inertia::location */
     {
-        $credentials = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+        $credentials = $request->validate(
+            [
+                'email'    => ['required', 'email'],
+                'password' => ['required'],
+            ],
+            [
+                'email.required'    => 'Email wajib diisi.',
+                'email.email'       => 'Format email tidak valid.',
+                'password.required' => 'Password wajib diisi.',
+            ]
+        );
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            throw ValidationException::withMessages(['email' => trans('auth.failed')]);
+            throw ValidationException::withMessages([
+                'email' => 'Email atau password salah.',
+            ]);
         }
 
         if (! (Auth::user()->is_active ?? false)) {

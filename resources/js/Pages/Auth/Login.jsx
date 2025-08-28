@@ -1,11 +1,12 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import Checkbox from "@/Components/Checkbox";
 import GuestLayout from "@/Layouts/GuestLayout";
 import InputError from "@/Components/InputError";
 import InputLabel from "@/Components/InputLabel";
 import PrimaryButton from "@/Components/PrimaryButton";
 import TextInput from "@/Components/TextInput";
-import {Head, Link, useForm} from "@inertiajs/react";
+import Alert from "@/Components/Alert";
+import {Head, Link, useForm, usePage} from "@inertiajs/react";
 
 export default function Login({
   status,
@@ -20,15 +21,48 @@ export default function Login({
     reset
   } = useForm({email: "", password: "", remember: false});
   const [showPassword, setShowPassword] = useState(false);
+  const [clientErrors, setClientErrors] = useState({});
+  const [serverErrors, setServerErrors] = useState({});
+  const { errors: pageErrors = {} } = usePage()?.props ?? {};
 
   useEffect(() => () => reset("password"), []);
   const submit = e => {
     e.preventDefault();
+    // Client-side validation sederhana
+    const ce = {};
+    if (!data.email) ce.email = "Email wajib diisi.";
+    if (!data.password) ce.password = "Password wajib diisi.";
+    setClientErrors(ce);
+    if (Object.keys(ce).length) return; // stop submit bila ada error lokal
+
     post("/login", {
       replace: true,
+      onError: (errs) => {
+        setServerErrors(errs || {});
+      },
       onFinish: () => reset("password")
     });
   };
+
+  // Gabungkan error dari server dan client untuk alert dan helper
+  const mergedErr = useMemo(() => ({
+    email: clientErrors.email || errors.email || pageErrors.email || serverErrors.email,
+    password: clientErrors.password || errors.password || pageErrors.password || serverErrors.password,
+  }), [clientErrors, errors, pageErrors, serverErrors]);
+
+  const anyError = useMemo(() => {
+    return Boolean(
+      mergedErr.email || mergedErr.password ||
+      Object.values(serverErrors).some(Boolean)
+    );
+  }, [mergedErr, serverErrors]);
+
+  const errorList = useMemo(() => {
+    const list = [mergedErr.email, mergedErr.password, ...Object.values(serverErrors || {})]
+      .filter(Boolean);
+    // Unique while preserving order
+    return Array.from(new Set(list));
+  }, [mergedErr, serverErrors]);
 
   return (<GuestLayout>
     <Head title="Masuk"/> {/* Keyframes untuk tombol (khusus halaman ini) */}
@@ -64,12 +98,18 @@ export default function Login({
       </p>
     </div>
 
-    {
-      status && (<div className="mb-4 rounded-xl border border-emerald-300/50 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-700
-                        dark:border-emerald-400/30 dark:bg-emerald-900/30 dark:text-emerald-200">
-        {status}
-      </div>)
-    }
+    {/* Alert kesalahan (tema menyatu dengan kartu login) */}
+    {anyError && (
+      <div className="mb-4">
+        <Alert variant="danger" title="Login gagal" messages={errorList} />
+      </div>
+    )}
+
+    {status && (
+      <div className="mb-4">
+        <Alert variant="success">{status}</Alert>
+      </div>
+    )}
 
     <form method="post" action="/login" onSubmit={submit} className="space-y-4">
       <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')
@@ -91,7 +131,7 @@ export default function Login({
                          focus:border-sky-400 focus:ring-sky-400/40
                          text-slate-900 dark:text-slate-100" autoComplete="username" isFocused={true} onChange={e => setData("email", e.target.value)} disabled={processing}/>
         </div>
-        <InputError message={errors.email} className="mt-2"/>
+        <InputError message={mergedErr.email} className="mt-2"/>
       </div>
 
       {/* Password */}
@@ -131,7 +171,7 @@ export default function Login({
                          focus:border-sky-400 focus:ring-sky-400/40
                          text-slate-900 dark:text-slate-100" autoComplete="current-password" onChange={e => setData("password", e.target.value)} disabled={processing}/>
         </div>
-        <InputError message={errors.password} className="mt-2"/>
+        <InputError message={mergedErr.password} className="mt-2"/>
       </div>
 
       {/* Remember + Forgot */}

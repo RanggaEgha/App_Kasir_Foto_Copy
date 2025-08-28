@@ -15,6 +15,22 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * allows your team to easily build robust real-time web applications.
  */
 
+// Gracefully handle expired CSRF/session (HTTP 419) by refreshing the page
+// so a fresh token and session are issued. This avoids the default
+// "419 Page Expired" screen after the login form is left idle.
+window.axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const status = error?.response?.status;
+        if (status === 419) {
+            if (typeof window !== 'undefined') {
+                window.location.reload();
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 // import Echo from 'laravel-echo';
 
 // import Pusher from 'pusher-js';

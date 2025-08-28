@@ -17,6 +17,8 @@ class KasirShift extends Model
     protected $casts = [
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
+        'cash_count' => 'array',
+        'method_breakdown' => 'array',
     ];
 
     public function user()

@@ -198,6 +198,34 @@
       .pagination .page-item.disabled .page-link{
         background:#f8f9fa; color:#adb5bd; border-color:#dee2e6;
       }
+
+      /* Keep button text color stable on hover/active for outline variants */
+      .btn-outline-primary:hover,
+      .btn-outline-primary:focus,
+      .btn-outline-primary:active { color: var(--bs-primary) !important; }
+      .btn-outline-secondary:hover,
+      .btn-outline-secondary:focus,
+      .btn-outline-secondary:active { color: var(--bs-secondary) !important; }
+      .btn-outline-danger:hover,
+      .btn-outline-danger:focus,
+      .btn-outline-danger:active { color: var(--bs-danger) !important; }
+      .btn-outline-success:hover,
+      .btn-outline-success:focus,
+      .btn-outline-success:active { color: var(--bs-success) !important; }
+      .btn-outline-warning:hover,
+      .btn-outline-warning:focus,
+      .btn-outline-warning:active { color: var(--bs-warning) !important; }
+      .btn-outline-info:hover,
+      .btn-outline-info:focus,
+      .btn-outline-info:active { color: var(--bs-info) !important; }
+
+      /* For custom themed buttons ensure color stays */
+      .btn-brand:hover,
+      .btn-brand:focus,
+      .btn-brand:active { color:#fff !important; }
+      .btn-soft:hover,
+      .btn-soft:focus,
+      .btn-soft:active { color: inherit !important; }
     </style>
   </body>
 </html>

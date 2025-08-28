@@ -5,20 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\HasAuditLogs;
 
-class PaymentRecord extends Model
+class CashMovement extends Model
 {
     use HasAuditLogs;
-    
+
     protected $fillable = [
-        'transaksi_id','direction','method','amount','reference','note',
-        'paid_at','shift_id','created_by'
+        'shift_id', 'direction', 'amount', 'reference', 'note', 'occurred_at', 'created_by'
     ];
 
     protected $casts = [
-        'paid_at' => 'datetime',
+        'occurred_at' => 'datetime',
     ];
 
-    public function transaksi(){ return $this->belongsTo(Transaksi::class); }
     public function shift(){ return $this->belongsTo(KasirShift::class, 'shift_id'); }
     public function creator(){ return $this->belongsTo(User::class, 'created_by'); }
 }
+

@@ -42,6 +42,8 @@ class HistoryTransaksiController extends Controller
         $byStatus  = Transaksi::selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status');
         $byPayment = Transaksi::selectRaw('payment_status, COUNT(*) c')->groupBy('payment_status')->pluck('c', 'payment_status');
 
+        $shiftOpen = \App\Models\KasirShift::openBy(auth()->id())->exists();
+
         return view('history.index', [
             'transaksis' => $transaksis,
             'status'     => $status,
@@ -49,6 +51,7 @@ class HistoryTransaksiController extends Controller
             'group'      => $group,
             'byStatus'   => $byStatus,
             'byPayment'  => $byPayment,
+            'shiftOpen'  => $shiftOpen,
         ]);
     }
 

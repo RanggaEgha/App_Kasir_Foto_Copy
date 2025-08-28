@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\KasirShift;
 use App\Models\PaymentRecord;
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\Audit;
@@ -68,8 +69,11 @@ class ShiftController extends Controller
         }
 
         $data = $r->validate([
-            'closing_cash' => ['required', 'integer', 'min:0'],
+            'closing_cash' => ['nullable', 'integer', 'min:0'],
             'notes'        => ['nullable', 'string'],
+            // hitung lembar uang (opsional)
+            'denom'        => ['array'],
+            'denom.*'      => ['nullable','integer','min:0'],
         ]);
 
         try {
@@ -82,24 +86,60 @@ class ShiftController extends Controller
                 }
 
                 // expected = opening_cash + (cash in) - (cash out)
-                $expectedDelta = PaymentRecord::where('shift_id', $locked->id)
+                $expectedDeltaSales = PaymentRecord::where('shift_id', $locked->id)
                     ->where('method', 'cash')
                     ->selectRaw("
                         COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE 0 END),0)
                       - COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END),0) as val
                     ")
                     ->value('val');
+                $expectedDeltaOps = CashMovement::where('shift_id', $locked->id)
+                    ->selectRaw("
+                        COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE 0 END),0)
+                      - COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END),0) as val
+                    ")->value('val');
 
-                $expected = (int) $locked->opening_cash + (int) $expectedDelta;
-                $diff     = (int) $data['closing_cash'] - $expected;
+                $expected = (int) $locked->opening_cash + (int) $expectedDeltaSales + (int) $expectedDeltaOps;
+                // Hitung closing dari lembar uang jika diisi
+                $denoms = $data['denom'] ?? [];
+                $closing = null;
+                $useDenom = false;
+                if (is_array($denoms) && count($denoms)) {
+                    foreach ($denoms as $qty) { if (((int)$qty) > 0) { $useDenom = true; break; } }
+                    if ($useDenom) {
+                        $sum = 0; foreach ($denoms as $nom => $qty) { $sum += ((int)$nom) * max(0, (int)$qty); }
+                        $closing = $sum;
+                    }
+                }
+                if ($closing === null) {
+                    // gunakan input manual hanya jika diisi
+                    $closing = isset($data['closing_cash']) && $data['closing_cash'] !== ''
+                        ? (int)$data['closing_cash']
+                        : null;
+                }
+                $diff     = (int) $closing - $expected;
+
+                // breakdown per metode pembayaran
+                $byMethod = PaymentRecord::where('shift_id', $locked->id)
+                    ->selectRaw("method, SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
+                    ->groupBy('method')
+                    ->get()
+                    ->mapWithKeys(fn($r)=>[$r->method => ['in'=>(int)$r->masuk,'out'=>(int)$r->keluar]])
+                    ->toArray();
+                $ops = CashMovement::where('shift_id',$locked->id)
+                    ->selectRaw("SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
+                    ->first();
+                $byMethod['_cash_ops'] = ['in'=>(int)($ops->masuk ?? 0), 'out'=>(int)($ops->keluar ?? 0)];
 
                 $locked->update([
                     'closed_at'     => now(),
-                    'closing_cash'  => (int) $data['closing_cash'],
+                    'closing_cash'  => $closing !== null ? (int)$closing : null,
                     'expected_cash' => $expected,
                     'difference'    => $diff,
                     'status'        => 'closed',
                     'notes'         => $data['notes'] ?? $locked->notes,
+                    'cash_count'    => $denoms ? json_encode($denoms) : $locked->cash_count,
+                    'method_breakdown' => json_encode($byMethod),
                 ]);
 
                 // Audit log: tutup shift
@@ -112,6 +152,8 @@ class ShiftController extends Controller
                         'expected'     => (int) $locked->expected_cash,
                         'closing_cash' => (int) $locked->closing_cash,
                         'difference'   => (int) $locked->difference,
+                        'cash_count'   => $denoms,
+                        'method_breakdown' => $byMethod,
                     ]
                 );
             });
@@ -120,6 +162,82 @@ class ShiftController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return back()->withErrors($e->getMessage())->withInput();
+        }
+    }
+
+    // Kas Masuk (tambah uang ke laci, non-transaksi)
+    public function cashIn(Request $r)
+    {
+        $data = $r->validate([
+            'amount'    => ['required','integer','min:1'],
+            'reference' => ['nullable','string','max:100'],
+            'note'      => ['nullable','string','max:255'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($data) {
+                $shiftId = KasirShift::openBy(auth()->id())->lockForUpdate()->value('id');
+                if (!$shiftId) throw new \Exception('Shift belum dibuka.');
+
+                $rec = CashMovement::create([
+                    'shift_id'   => $shiftId,
+                    'direction'  => 'in',
+                    'amount'     => (int)$data['amount'],
+                    'reference'  => $data['reference'] ?? null,
+                    'note'       => $data['note'] ?? 'Kas masuk (operasional)',
+                    'occurred_at'=> now(),
+                    'created_by' => auth()->id(),
+                ]);
+
+                Audit::log('cash.in', $rec, 'Kas masuk (operasional)', [
+                    'amount'    => (int)$rec->amount,
+                    'reference' => $rec->reference,
+                    'note'      => $rec->note,
+                    'shift_id'  => $rec->shift_id,
+                ]);
+            });
+
+            return back()->with('success', 'Kas masuk dicatat.');
+        } catch (\Throwable $e) {
+            report($e); return back()->withErrors($e->getMessage());
+        }
+    }
+
+    // Kas Keluar (biaya operasional, setor, dll non-transaksi)
+    public function cashOut(Request $r)
+    {
+        $data = $r->validate([
+            'amount'    => ['required','integer','min:1'],
+            'reference' => ['nullable','string','max:100'],
+            'note'      => ['nullable','string','max:255'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($data) {
+                $shiftId = KasirShift::openBy(auth()->id())->lockForUpdate()->value('id');
+                if (!$shiftId) throw new \Exception('Shift belum dibuka.');
+
+                $rec = CashMovement::create([
+                    'shift_id'   => $shiftId,
+                    'direction'  => 'out',
+                    'amount'     => (int)$data['amount'],
+                    'reference'  => $data['reference'] ?? null,
+                    'note'       => $data['note'] ?? 'Kas keluar (operasional)',
+                    'occurred_at'=> now(),
+                    'created_by' => auth()->id(),
+                ]);
+
+                Audit::log('cash.out', $rec, 'Kas keluar (operasional)', [
+                    'amount'    => (int)$rec->amount,
+                    'reference' => $rec->reference,
+                    'note'      => $rec->note,
+                    'shift_id'  => $rec->shift_id,
+                ]);
+            });
+
+            return back()->with('success', 'Kas keluar dicatat.');
+        } catch (\Throwable $e) {
+            report($e); return back()->withErrors($e->getMessage());
         }
     }
 }

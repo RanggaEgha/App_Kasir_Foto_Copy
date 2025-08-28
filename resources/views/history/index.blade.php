@@ -204,7 +204,7 @@
             <td>
               <span class="badge b-pay {{ $payClass }}">{{ $payStatus($paymentStatus) }}</span>
             </td>
-            <td class="text-end">Rp{{ number_format((int)$t->total_harga, 0, ',', '.') }}</td>
+            <td class="text-end">Rp {{ number_format((int)$t->total_harga, 0, ',', '.') }}</td>
             <td>
               <div class="action-bar">
                 {{-- DETAIL / PDF --}}
@@ -320,12 +320,19 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Metode</label>
+            @php $shiftOpen = $shiftOpen ?? false; @endphp
             <select class="form-select" name="method">
-              <option value="cash">Cash</option>
+              <option value="cash" {{ $shiftOpen ? '' : 'disabled' }}>Cash</option>
               <option value="transfer">Transfer</option>
               <option value="qris">QRIS</option>
             </select>
           </div>
+          @if(!$shiftOpen)
+            <div class="alert alert-warning d-flex justify-content-between align-items-center gap-2 py-2">
+              <div>Shift belum dibuka. Metode <strong>Cash</strong> dinonaktifkan.</div>
+              <a href="{{ route('shift.index') }}" class="btn btn-soft primary btn-sm">Buka Shift</a>
+            </div>
+          @endif
           <div class="mb-3">
             <label class="form-label">Referensi (opsional)</label>
             <input type="text" class="form-control" name="reference" placeholder="No. transfer / QR ref">

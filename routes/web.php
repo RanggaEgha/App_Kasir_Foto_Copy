@@ -61,6 +61,9 @@ Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
         Route::get('/', [ShiftController::class, 'index'])->name('index');
         Route::post('/open', [ShiftController::class, 'open'])->name('open');
         Route::post('/close/{shift}', [ShiftController::class, 'close'])->name('close');
+        // Kas masuk / keluar (operasional)
+        Route::post('/cash-in',  [ShiftController::class, 'cashIn'])->name('cash_in');
+        Route::post('/cash-out', [ShiftController::class, 'cashOut'])->name('cash_out');
     });
 
     // Pembayaran (POS)

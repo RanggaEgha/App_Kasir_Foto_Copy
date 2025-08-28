@@ -51,12 +51,15 @@ class PembayaranController extends Controller
             ];
         }
 
+        $shiftOpen = KasirShift::openBy(auth()->id())->exists();
+
         return view('pos.create', [
             'barangs'            => $barangs,
             'jasas'              => $jasas,
             'units'              => $units,
             'unitPricesByBarang' => $unitPrices,
             'discountRules'      => $rulesMap,
+            'shiftOpen'          => $shiftOpen,
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Blade;
 use Carbon\Carbon;
 
 // Registrasi observer stok
@@ -37,5 +38,13 @@ class AppServiceProvider extends ServiceProvider
         /* ── Model Observers ───────────────────────────────────── */
         // Penting: supaya perubahan stok via Eloquent ->save() memicu notifikasi
         BarangUnitPrice::observe(BarangUnitPriceObserver::class);
+
+        /* ── Blade directives: uang Rupiah ───────────────────── */
+        Blade::directive('rupiah', function ($expression) {
+            return "<?php echo 'Rp '.number_format((float)($expression ?? 0), 0, ',', '.'); ?>";
+        });
+        Blade::directive('idr', function ($expression) {
+            return "<?php echo number_format((float)($expression ?? 0), 0, ',', '.'); ?>";
+        });
     }
 }

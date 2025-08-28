@@ -315,11 +315,19 @@
           </div>
 
           <div class="p-3">
+            @if(empty($shiftOpen))
+              <div class="alert alert-warning d-flex justify-content-between align-items-center gap-2">
+                <div>
+                  Shift kasir belum dibuka. Pembayaran <strong>Cash</strong> dinonaktifkan.
+                </div>
+                <a href="{{ route('shift.index') }}" class="btn btn-brand btn-sm pill">Buka Shift</a>
+              </div>
+            @endif
             <div class="mb-3">
               <label class="form-label">Metode</label>
               <select class="form-select" name="metode_bayar" id="metodeBayar">
-                <option value="cash">Cash</option>
-                <option value="transfer">Transfer</option>
+                <option value="cash" {{ !empty($shiftOpen) ? '' : 'disabled' }}>Cash</option>
+                <option value="transfer" {{ empty($shiftOpen) ? 'selected' : '' }}>Transfer</option>
                 <option value="qris">QRIS</option>
               </select>
             </div>

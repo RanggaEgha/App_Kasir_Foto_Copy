@@ -21,6 +21,8 @@
     'transaksi.posted'  => 'Mem-finalkan transaksi',
     'transaksi.voided'  => 'Membatalkan transaksi',
     'payment.added'     => 'Menambah pembayaran',
+    'cash.in'           => 'Kas masuk (operasional)',
+    'cash.out'          => 'Kas keluar (operasional)',
     'stock.decremented' => 'Stok berkurang (terjual)',
     'stock.incremented' => 'Stok bertambah (void/retur)',
     'shift.opened'      => 'Buka shift',

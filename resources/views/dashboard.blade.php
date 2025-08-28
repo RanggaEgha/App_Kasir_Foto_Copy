@@ -135,7 +135,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Harian</div>
-            <div class="value">@if(is_numeric($harian_total)) Rp{{ number_format($harian_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($harian_total)) Rp {{ number_format($harian_total,0,',','.') }} @else — @endif</div>
             <div class="sub">@if(is_numeric($harian_count)) {{ (int)$harian_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -147,7 +147,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Mingguan</div>
-            <div class="value">@if(is_numeric($mingguan_total)) Rp{{ number_format($mingguan_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($mingguan_total)) Rp {{ number_format($mingguan_total,0,',','.') }} @else — @endif</div>
             <div class="sub">@if(is_numeric($mingguan_count)) {{ (int)$mingguan_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -344,7 +344,7 @@
                         <td class="fw-700">{{ $i+1 }}</td>
                         <td class="text-truncate" style="max-width: 260px">{{ $row['label'] }}</td>
                         <td class="text-end">{{ number_format($row['qty'],0,',','.') }}</td>
-                        <td class="text-end">@if($row['rev']>0) Rp{{ number_format($row['rev'],0,',','.') }} @else — @endif</td>
+                        <td class="text-end">@if($row['rev']>0) Rp {{ number_format($row['rev'],0,',','.') }} @else — @endif</td>
                       </tr>
                       @endforeach
                     </tbody>

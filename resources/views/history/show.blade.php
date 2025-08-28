@@ -57,9 +57,9 @@
             @endif
           @endif
           <tr><th>Dibayar</th>
-              <td>Rp{{ number_format((int)$transaksi->dibayar,0,',','.') }}</td></tr>
+              <td>Rp {{ number_format((int)$transaksi->dibayar,0,',','.') }}</td></tr>
           <tr><th>Kembalian</th>
-              <td>Rp{{ number_format((int)$transaksi->kembalian,0,',','.') }}</td></tr>
+              <td>Rp {{ number_format((int)$transaksi->kembalian,0,',','.') }}</td></tr>
         </tbody>
       </table>
 
@@ -89,15 +89,15 @@
                     (isi {{ $it->barang->isi_per_paket }})
                   @endif
                 </td>
-                <td>Rp{{ number_format((int)$it->harga_satuan,0,',','.') }}</td>
-                <td>Rp{{ number_format((int)$it->subtotal,0,',','.') }}</td>
+                <td>Rp {{ number_format((int)$it->harga_satuan,0,',','.') }}</td>
+                <td>Rp {{ number_format((int)$it->subtotal,0,',','.') }}</td>
               </tr>
             @endforeach
           </tbody>
           <tfoot>
             <tr>
               <th colspan="4" class="text-end">Total</th>
-              <th>Rp{{ number_format((int)$transaksi->total_harga,0,',','.') }}</th>
+              <th>Rp {{ number_format((int)$transaksi->total_harga,0,',','.') }}</th>
             </tr>
           </tfoot>
         </table>

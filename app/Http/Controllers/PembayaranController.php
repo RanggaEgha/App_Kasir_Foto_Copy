@@ -17,8 +17,9 @@ class PembayaranController extends Controller
     public function create()
     {
         // Data master
-        $barangs = Barang::orderBy('nama')->get(['id','nama']);
-        $jasas   = Jasa::orderBy('nama')->get(['id','nama','harga_per_satuan']);
+        // Sertakan image_path agar accessor image_url pada model bisa bekerja
+        $barangs = Barang::orderBy('nama')->get(['id','nama','image_path']);
+        $jasas   = Jasa::orderBy('nama')->get(['id','nama','harga_per_satuan','image_path']);
         $units   = Unit::orderBy('kode')->get(['id','kode']); // fallback/unit default
 
         // Peta unit/harga/stok per barang (untuk dropdown dinamis)

@@ -2,16 +2,17 @@
 @section('title','Pembayaran')
 
 @section('content')
+@include('partials.neo-theme')
 <style>
   :root{
     --bg:#f6f8fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
-    --brand:#6366f1; --brand2:#4f46e5; --accent:#22c55e; --warm:#f59e0b;
-    --chip:#eef2ff; --chip-ink:#4338ca; --chip-active:#dbeafe; --chip-border:#c7d2fe;
-    --border:#e5e7eb; --hover:#f8fafc;
+    --brand:#A4193D; --brand2:#8C1433; --accent:#22c55e; --warm:#f59e0b;
+    --chip:rgba(255,223,185,.45); --chip-ink:#7A1029; --chip-active:rgba(255,223,185,.65); --chip-border:rgba(164,25,61,.28);
+    --border:#e5e7eb; --hover:#fff7f0;
   }
   body{background:var(--bg); color:var(--ink)}
   .glass{background:var(--card);border:1px solid rgba(2,6,23,.07);box-shadow:0 8px 26px rgba(2,6,23,.08);border-radius:16px}
-  .header-gradient{background:linear-gradient(135deg,#eef2ff 0%,#ffffff 55%,#ecfeff 100%);border:1px solid #e7ecff;border-radius:16px;padding:14px 18px}
+  .header-gradient{background:linear-gradient(135deg,rgba(255,223,185,.55) 0%,#ffffff 55%,rgba(255,223,185,.35) 100%);border:1px solid rgba(164,25,61,.25);border-radius:16px;padding:14px 18px}
   .muted{color:var(--muted)} .pill{border-radius:999px}
   .amount-lg{font-size:1.7rem;font-weight:800} .amount-md{font-size:1.05rem;font-weight:800}
 
@@ -25,8 +26,8 @@
   .nav-modern .nav-link.active{color:#111827;font-weight:700;border-bottom:3px solid var(--brand);border-radius:0}
   .btn-brand{background:var(--brand);border-color:var(--brand);color:#fff}
   .btn-brand:hover{background:var(--brand2);border-color:var(--brand2)}
-  .btn-soft{background:#eef2ff;color:#3730a3;border:1px solid #e0e7ff}
-  .btn-soft:hover{background:#e0e7ff}
+  .btn-soft{background:rgba(255,223,185,.45);color:var(--brand);border:1px solid rgba(164,25,61,.28)}
+  .btn-soft:hover{background:rgba(255,223,185,.65)}
 
   /* Stepper qty (panel bawah) */
   .qty-stepper{display:flex;align-items:center}
@@ -44,7 +45,7 @@
   input[type=number]{ -moz-appearance:textfield; }
 
   /* Sticky totals */
-  .checkout-bar{position:sticky;bottom:-1px;background:#fff;border-top:1px solid #eef2ff;padding:.75rem 1rem;border-radius:0 0 16px 16px}
+  .checkout-bar{position:sticky;bottom:-1px;background:#fff;border-top:1px solid rgba(164,25,61,.15);padding:.75rem 1rem;border-radius:0 0 16px 16px}
 
   /* Command palette (Cari) */
   .picker-wrap{position:relative}
@@ -56,13 +57,14 @@
   .picker-results{position:absolute;z-index:1050;left:0;right:0;top:50px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 12px 28px rgba(2,6,23,.18);max-height:320px;overflow:auto}
   .picker-item{padding:.6rem .9rem;display:flex;align-items:center;gap:.5rem;cursor:pointer}
   .picker-item .title{font-weight:600}
-  .picker-item:hover,.picker-item.active{background:#f5f8ff}
+  .picker-item:hover,.picker-item.active{background:rgba(255,223,185,.25)}
   .picker-empty{padding:.7rem .9rem;color:var(--muted)}
   .selected-pill{display:inline-flex;align-items:center;gap:.45rem;background:var(--chip);color:var(--chip-ink);padding:.25rem .6rem;border-radius:999px;font-weight:700;border:1px solid var(--chip-border)}
 
   /* Unit chips */
-  .unit-chip{border:1px solid #e5e7eb;background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);border-radius:999px;padding:.32rem .65rem;cursor:pointer}
-  .unit-chip small{color:#64748b}
+  .unit-chip{border:1px solid #e5e7eb;background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);border-radius:999px;padding:.22rem .46rem;cursor:pointer}
+  .unit-chip strong{font-weight:500; font-size:.78rem;}
+  .unit-chip small{color:#64748b; font-size:.78rem;}
   .unit-chip.active{border-color:var(--chip-border);background:linear-gradient(135deg,var(--chip-active) 0%,#ffffff 100%);box-shadow:0 6px 16px rgba(99,102,241,.15)}
 
   /* DAFTAR grid 3 kolom */
@@ -70,28 +72,36 @@
   .list-box{border:1px solid var(--border);border-radius:12px;overflow:hidden}
   .list-toolbar{position:sticky;top:0;z-index:1;background:#fff;border-bottom:1px solid var(--border);padding:.5rem;display:flex;gap:.5rem;flex-wrap:wrap}
   .alpha-btn{border:1px solid var(--border);background:#fff;padding:.25rem .6rem;border-radius:999px;cursor:pointer;font-weight:600}
-  .alpha-btn.active{background:#e0e7ff;border-color:#c7d2fe}
+  .alpha-btn.active{background:rgba(255,223,185,.55);border-color:rgba(164,25,61,.28)}
 
   .grid{
     display:grid;
     grid-template-columns:repeat(3, minmax(0,1fr));
     gap:.6rem; padding:.6rem; max-height:260px; overflow:auto; background:#fcfdff;
+    scrollbar-width: thin; scrollbar-color: #D9A4B3 transparent;
   }
+  .grid::-webkit-scrollbar{ width:8px; height:8px; }
+  .grid::-webkit-scrollbar-thumb{ background:#D9A4B3; border-radius:999px; border:3px solid transparent; background-clip:content-box; }
+  .grid::-webkit-scrollbar-track{ background:transparent; }
   .tile{
-    display:flex;align-items:center;gap:.6rem;border:1px solid var(--border);border-radius:12px;
-    padding:.55rem .7rem;background:#fff;cursor:pointer;transition:all .15s ease; min-height:58px;
+    display:flex;align-items:flex-start;gap:.6rem;border:1px solid var(--border);border-radius:12px;
+    padding:.5rem .65rem;background:#fff;cursor:pointer;transition:all .15s ease; min-height:54px;
   }
-  .tile:hover{border-color:#c7d2fe;background:var(--hover);transform:translateY(-1px)}
-  .tile.active{border-color:#8b93ff;box-shadow:0 8px 18px rgba(99,102,241,.16)}
-  .tile .ico{ width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#eef2ff;color:#3730a3;flex:0 0 34px; }
+  .tile:hover{border-color:rgba(164,25,61,.28);background:var(--hover);transform:translateY(-1px)}
+  .tile.active{border-color:var(--brand);box-shadow:0 8px 18px rgba(164,25,61,.16)}
+  .tile .ico{ width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:rgba(255,223,185,.55);color:#7A1029;flex:0 0 42px; overflow:hidden }
+  .tile .ico img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:10px }
   .tile .name{
     font-weight:600;line-height:1.2;display:-webkit-box;-webkit-box-orient:vertical;
     -webkit-line-clamp:3;overflow:hidden;
   }
-  .money{text-align:right;font-weight:800}
+  .tile-content{display:flex;flex-direction:column;gap:.1rem;flex:1 1 auto;min-width:0}
+  .tile .price{color:var(--muted);font-weight:600;font-size:.88rem}
+  .unit-chip strong{font-weight:700}
+  .picker-item .title{font-weight:600}
 </style>
 
-<div class="container-fluid">
+<div class="container-fluid py-3">
   <div class="header-gradient mb-3 d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center gap-3">
       <div class="rounded-3 bg-white p-2 border">
@@ -154,24 +164,25 @@
 
         {{-- Tambah Item --}}
         <div class="glass">
-          <div class="p-3 border-bottom bg-white rounded-top-4">
+          <div class="p-3 border-bottom bg-white rounded-top-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <ul class="nav nav-tabs nav-modern card-header-tabs" id="tabItem" role="tablist">
               <li class="nav-item"><a class="nav-link active" id="barang-tab" data-coreui-toggle="tab" href="#tab-barang" role="tab">Barang</a></li>
               <li class="nav-item"><a class="nav-link" id="jasa-tab" data-coreui-toggle="tab" href="#tab-jasa" role="tab">Jasa</a></li>
             </ul>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+              <div class="mode-switch btn-group" role="group" aria-label="View switch">
+                <button type="button" class="btn btn-soft active" id="btnModeDaftarHeader">Daftar</button>
+                <button type="button" class="btn btn-soft" id="btnModeCariHeader">Cari</button>
+              </div>
+              <button id="btnToggleAlpha" type="button" class="btn btn-outline-secondary btn-sm">A–Z</button>
+            </div>
           </div>
 
           <div class="p-3">
             <div class="tab-content">
               {{-- BARANG --}}
               <div class="tab-pane fade show active" id="tab-barang" role="tabpanel" aria-labelledby="barang-tab" tabindex="0">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="mode-switch btn-group">
-                    <button type="button" class="btn btn-soft active" id="btnModeDaftarBarang">Daftar</button>
-                    <button type="button" class="btn btn-soft" id="btnModeCariBarang">Cari</button>
-                  </div>
-                  <div class="small muted">Pilih dari daftar, atau gunakan Cari</div>
-                </div>
+                <div class="d-flex justify-content-end align-items-center mb-2"><div class="small muted">Pilih dari daftar, atau gunakan Cari</div></div>
 
                 {{-- CARI BARANG --}}
                 <div id="modeCariBarang" class="d-none">
@@ -192,7 +203,7 @@
 
                 {{-- DAFTAR BARANG --}}
                 <div id="modeDaftarBarang" class="list-box">
-                  <div class="list-toolbar">
+                  <div class="list-toolbar d-none" id="toolbarBarang">
                     <span class="alpha-btn active" data-letter="*">Semua</span>
                     @foreach(range('A','Z') as $L)
                       <span class="alpha-btn" data-letter="{{ $L }}">{{ $L }}</span>
@@ -236,13 +247,7 @@
 
               {{-- JASA --}}
               <div class="tab-pane fade" id="tab-jasa" role="tabpanel" aria-labelledby="jasa-tab" tabindex="0">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="mode-switch btn-group">
-                    <button type="button" class="btn btn-soft active" id="btnModeDaftarJasa">Daftar</button>
-                    <button type="button" class="btn btn-soft" id="btnModeCariJasa">Cari</button>
-                  </div>
-                  <div class="small muted">Pilih dari daftar, atau gunakan Cari</div>
-                </div>
+                <div class="d-flex justify-content-end align-items-center mb-2"><div class="small muted">Pilih dari daftar, atau gunakan Cari</div></div>
 
                 {{-- CARI JASA --}}
                 <div id="modeCariJasa" class="d-none">
@@ -263,7 +268,7 @@
 
                 {{-- DAFTAR JASA --}}
                 <div id="modeDaftarJasa" class="list-box">
-                  <div class="list-toolbar">
+                  <div class="list-toolbar d-none" id="toolbarJasa">
                     <span class="alpha-btn alpha-j active" data-letter="*">Semua</span>
                     @foreach(range('A','Z') as $L)
                       <span class="alpha-btn alpha-j" data-letter="{{ $L }}">{{ $L }}</span>
@@ -356,8 +361,17 @@
   $map = ($unitPricesByBarang ?? collect())->mapWithKeys(function($rows, $barangId){
     return [$barangId => $rows->toArray()];
   });
-  $barangsSimple = $barangs->map(fn($b)=>['id'=>$b->id,'nama'=>$b->nama])->values();
-  $jasasSimple   = $jasas->map(fn($j)=>['id'=>$j->id,'nama'=>$j->nama,'harga'=>(int)$j->harga_per_satuan])->values();
+  $barangsSimple = $barangs->map(fn($b)=>[
+    'id'        => $b->id,
+    'nama'      => $b->nama,
+    'image_url' => $b->image_url,
+  ])->values();
+  $jasasSimple   = $jasas->map(fn($j)=>[
+    'id'        => $j->id,
+    'nama'      => $j->nama,
+    'harga'     => (int) $j->harga_per_satuan,
+    'image_url' => $j->image_url,
+  ])->values();
 @endphp
 
 <script>
@@ -366,9 +380,10 @@ const unitMap = @json($map);
 const barangs = @json($barangsSimple);
 const jasas   = @json($jasasSimple);
 
-/* state */
+/* state (GLOBAL, satu sumber) */
 let cart = [];
 let pickedBarang = null;
+let pickedUnit   = null;
 let pickedJasa   = null;
 
 /* helpers */
@@ -383,9 +398,217 @@ function bindMoneyInput(viewEl, onChange){
   viewEl.addEventListener('input', fmt); viewEl.addEventListener('blur', fmt); fmt();
 }
 
-/* quick cash */
+/* quick cash + header modes */
 const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
 (function(){
+  const btnDaftarH=document.getElementById('btnModeDaftarHeader');
+  const btnCariH=document.getElementById('btnModeCariHeader');
+  const modeCariBarang=document.getElementById('modeCariBarang');
+  const modeDaftarBarang=document.getElementById('modeDaftarBarang');
+  const modeCariJasa=document.getElementById('modeCariJasa');
+  const modeDaftarJasa=document.getElementById('modeDaftarJasa');
+  const btnToggleAlpha=document.getElementById('btnToggleAlpha');
+  const toolbarBarang=document.getElementById('toolbarBarang');
+  const toolbarJasa=document.getElementById('toolbarJasa');
+
+  function setHeaderMode(toList){
+    if(modeDaftarBarang) modeDaftarBarang.classList.toggle('d-none', !toList);
+    if(modeCariBarang)   modeCariBarang.classList.toggle('d-none',   toList);
+    if(modeDaftarJasa)   modeDaftarJasa.classList.toggle('d-none',   !toList);
+    if(modeCariJasa)     modeCariJasa.classList.toggle('d-none',     toList);
+    if(btnDaftarH) btnDaftarH.classList.toggle('active', toList);
+    if(btnCariH)   btnCariH.classList.toggle('active', !toList);
+    if(toList){
+      try{ if(typeof renderBarangGrid==='function') renderBarangGrid('*'); }catch(e){}
+      try{ if(typeof renderJasaGrid==='function') renderJasaGrid('*'); }catch(e){}
+    } else {
+      try{ document.getElementById('unitChipsWrap')?.classList.add('d-none'); }catch(e){}
+      pickedBarang=null; pickedUnit=null; pickedJasa=null;
+    }
+  }
+
+  btnDaftarH?.addEventListener('click',()=>setHeaderMode(true));
+  btnCariH?.addEventListener('click',()=>setHeaderMode(false));
+
+  btnToggleAlpha?.addEventListener('click',()=>{
+    const isBarang = document.getElementById('barang-tab').classList.contains('active');
+    const el = isBarang ? toolbarBarang : toolbarJasa;
+    if(el) el.classList.toggle('d-none');
+  });
+
+  setHeaderMode(true);
+  try{
+    document.getElementById('modeDaftarBarang')?.classList.remove('d-none');
+    document.getElementById('modeCariBarang')?.classList.add('d-none');
+    document.getElementById('modeDaftarJasa')?.classList.remove('d-none');
+    document.getElementById('modeCariJasa')?.classList.add('d-none');
+    if(typeof renderBarangGrid==='function') renderBarangGrid('*');
+  }catch(e){}
+
+  document.getElementById('tabItem')?.addEventListener('shown.coreui.tab', ()=>{
+    setHeaderMode(btnDaftarH?.classList.contains('active'));
+  });
+  document.getElementById('tabItem')?.addEventListener('shown.bs.tab', ()=>{
+    setHeaderMode(btnDaftarH?.classList.contains('active'));
+  });
+
+  // ======================== GRID RENDERERS (scope IIFE) ========================
+  const BARANGS = @json($barangs ?? []);
+  const JASAS   = @json($jasas ?? []);
+  const UNITMAP = @json(($unitPricesByBarang ?? collect())->toArray());
+
+  function h(el, html){ el.innerHTML = html; }
+  function byId(id){ return document.getElementById(id); }
+
+  function renderBarangGrid(alpha='*'){
+    const wrap = byId('barangGrid'); if(!wrap) return;
+    const letter = (alpha||'*').toString().toUpperCase();
+    const list = (BARANGS||[]).filter(it=> letter==='*' || (it.nama||'').toUpperCase().startsWith(letter));
+    if(list.length===0){ h(wrap,'<div class="text-center text-muted py-3">Tidak ada barang</div>'); return; }
+    let html='';
+    list.forEach(it=>{
+      const name = (it.nama||'').replace(/</g,'&lt;');
+      const thumb = it.image_url ? `<img src="${it.image_url}" alt="${name}" onerror=\"this.outerHTML='B'\">` : 'B';
+      html += `<div class="tile" data-id="${it.id}" data-name="${name}">
+        <div class="ico">${thumb}</div>
+        <div class="flex-1"><div class="name">${name}</div></div>
+      </div>`;
+    });
+    h(wrap, html);
+    wrap.querySelectorAll('.tile').forEach(t=> t.addEventListener('click', ()=>{
+      const id = t.getAttribute('data-id'); const name=t.getAttribute('data-name');
+      pickedBarang = { id: parseInt(id,10), nama: name };
+      const chipsWrap = byId('unitChipsWrap'); const chips = byId('unitChips');
+      const rows = (UNITMAP[id]||[]);
+      if(rows.length){
+        let cHtml=''; rows.forEach((r,i)=>{
+          cHtml += `<button type="button" class="unit-chip" data-unit="${r.unit_id}" data-kode="${r.unit_kode}" data-harga="${r.harga}" data-stok="${r.stok}">
+            <strong>${(r.unit_kode||'').toUpperCase()}</strong><small class="ms-1 text-muted">Rp${(r.harga||0).toLocaleString('id-ID')}</small>
+          </button>`;
+        });
+        h(chips, cHtml); chipsWrap.classList.remove('d-none');
+        chips.querySelectorAll('.unit-chip').forEach(btn=> btn.addEventListener('click', ()=>{
+          chips.querySelectorAll('.unit-chip').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          pickedBarang = {
+            ...(pickedBarang||{}),
+            unit_id : parseInt(btn.getAttribute('data-unit'),10),
+            unit_kode: btn.getAttribute('data-kode'),
+            harga   : parseInt(btn.getAttribute('data-harga')||'0',10),
+            stok    : parseInt(btn.getAttribute('data-stok')||'0',10)
+          };
+          byId('stokView').value    = idFormat(pickedBarang.stok||0);
+          byId('hargaBarang').value = idFormat(pickedBarang.harga||0); // <-- auto format
+        }));
+        const first = chips.querySelector('.unit-chip'); if(first){ first.click(); }
+      } else {
+        byId('unitChipsWrap')?.classList.add('d-none');
+      }
+    }));
+  }
+
+  function renderJasaGrid(alpha='*'){
+    const wrap = byId('jasaGrid'); if(!wrap) return;
+    const letter = (alpha||'*').toString().toUpperCase();
+    const list = (JASAS||[]).filter(it=> letter==='*' || (it.nama||'').toUpperCase().startsWith(letter));
+    if(list.length===0){ h(wrap,'<div class="text-center text-muted py-3">Tidak ada jasa</div>'); return; }
+    let html='';
+    list.forEach(it=>{
+      const name = (it.nama||'').replace(/</g,'&lt;');
+      const harga = parseInt(it.harga_per_satuan||0,10);
+      const thumb = it.image_url ? `<img src="${it.image_url}" alt="${name}" onerror=\"this.outerHTML='J'\">` : 'J';
+      html += `<div class="tile" data-id="${it.id}" data-name="${name}" data-harga="${harga}">
+        <div class="ico">${thumb}</div>
+        <div class="tile-content">
+          <div class="name">${name}</div>
+          <div class="price">Rp${harga.toLocaleString('id-ID')}</div>
+        </div>
+      </div>`;
+    });
+    h(wrap, html);
+    wrap.querySelectorAll('.tile').forEach(t=> t.addEventListener('click', ()=>{
+      const id = parseInt(t.getAttribute('data-id'),10);
+      const name = t.getAttribute('data-name');
+      const harga = parseInt(t.getAttribute('data-harga')||'0',10);
+      pickedJasa = { id, nama: name, harga };
+      byId('hargaJasa').value = idFormat(harga); // <-- auto format
+    }));
+  }
+
+  // ====================== SEARCH (CARI) ======================
+  function resetBarangPick(){
+    pickedBarang=null; pickedUnit=null;
+    byId('unitChipsWrap')?.classList.add('d-none');
+    if(byId('stokView')) byId('stokView').value=0;
+    if(byId('hargaBarang')) byId('hargaBarang').value=0;
+    byId('barangSelectedInfo')?.classList.add('d-none');
+  }
+  function resetJasaPick(){
+    pickedJasa=null; if(byId('hargaJasa')) byId('hargaJasa').value=0;
+    byId('jasaSelectedInfo')?.classList.add('d-none');
+  }
+
+  const bInput=document.getElementById('barangSearch'), bResults=document.getElementById('barangResults');
+  const bSelInfo=document.getElementById('barangSelectedInfo'), bSelName=document.getElementById('barangSelectedName');
+  function renderBarangResults(){
+    const q=(bInput?.value||'').toLowerCase().trim(); if(!bResults) return;
+    if(!q){ bResults.classList.add('d-none'); bResults.innerHTML=''; return; }
+    const list=(BARANGS||[]).filter(it=> (it.nama||'').toLowerCase().includes(q));
+    if(list.length===0){ bResults.classList.remove('d-none'); bResults.innerHTML='<div class="picker-empty">Tidak ada hasil</div>'; return; }
+    let html='';
+    list.forEach(it=>{
+      const name=(it.nama||'').replace(/</g,'&lt;');
+      html+=`<div class="picker-item" data-id="${it.id}" data-name="${name}"><div class="title">${name}</div></div>`;
+    });
+    bResults.classList.remove('d-none'); bResults.innerHTML=html;
+    bResults.querySelectorAll('.picker-item').forEach(el=> el.addEventListener('click',()=>{
+      const id=el.getAttribute('data-id'); const name=el.getAttribute('data-name');
+      pickedBarang={ id:parseInt(id,10), nama:name }; bSelName.textContent=name; bSelInfo.classList.remove('d-none');
+      const rows=(UNITMAP[id]||[]); const chips=document.getElementById('unitChips'); const wrap=document.getElementById('unitChipsWrap');
+      if(rows.length){
+        let cHtml=''; rows.forEach(r=> cHtml+=`<button type="button" class="unit-chip" data-unit="${r.unit_id}" data-kode="${r.unit_kode}" data-harga="${r.harga}" data-stok="${r.stok}"><strong>${(r.unit_kode||'').toUpperCase()}</strong><small class="ms-1 text-muted">Rp${(r.harga||0).toLocaleString('id-ID')}</small></button>`);
+        chips.innerHTML=cHtml; wrap.classList.remove('d-none');
+        chips.querySelectorAll('.unit-chip').forEach(btn=> btn.addEventListener('click',()=>{
+          chips.querySelectorAll('.unit-chip').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          pickedBarang = {
+            ...(pickedBarang||{}),
+            unit_id : parseInt(btn.getAttribute('data-unit'),10),
+            unit_kode: btn.getAttribute('data-kode'),
+            harga   : parseInt(btn.getAttribute('data-harga')||'0',10),
+            stok    : parseInt(btn.getAttribute('data-stok')||'0',10)
+          };
+          document.getElementById('stokView').value  = idFormat(pickedBarang.stok||0);
+          document.getElementById('hargaBarang').value = idFormat(pickedBarang.harga||0); // <-- auto format
+        }));
+        const first=chips.querySelector('.unit-chip'); if(first){ first.click(); }
+      } else { wrap.classList.add('d-none'); }
+      bResults.classList.add('d-none');
+    }));
+  }
+  bInput?.addEventListener('input', renderBarangResults);
+  document.getElementById('btnModeCariHeader')?.addEventListener('click',()=>{ setTimeout(()=> bInput?.focus(), 50); });
+
+  const jInput=document.getElementById('jasaSearch'), jResults=document.getElementById('jasaResults');
+  const jSelInfo=document.getElementById('jasaSelectedInfo'), jSelName=document.getElementById('jasaSelectedName');
+  function renderJasaResults(){
+    const q=(jInput?.value||'').toLowerCase().trim(); if(!jResults) return;
+    if(!q){ jResults.classList.add('d-none'); jResults.innerHTML=''; return; }
+    const list=(JASAS||[]).filter(it=> (it.nama||'').toLowerCase().includes(q));
+    if(list.length===0){ jResults.classList.remove('d-none'); jResults.innerHTML='<div class="picker-empty">Tidak ada hasil</div>'; return; }
+    let html=''; list.forEach(it=>{ const name=(it.nama||'').replace(/</g,'&lt;'); html+=`<div class="picker-item" data-id="${it.id}" data-name="${name}" data-harga="${parseInt(it.harga_per_satuan||0,10)}"><div class="title">${name}</div></div>`; });
+    jResults.classList.remove('d-none'); jResults.innerHTML=html;
+    jResults.querySelectorAll('.picker-item').forEach(el=> el.addEventListener('click',()=>{
+      const id=parseInt(el.getAttribute('data-id'),10); const name=el.getAttribute('data-name'); const harga=parseInt(el.getAttribute('data-harga')||'0',10);
+      pickedJasa={ id, nama:name, harga }; jSelName.textContent=name; jSelInfo.classList.remove('d-none'); document.getElementById('hargaJasa').value=idFormat(harga); // <-- auto format
+      jResults.classList.add('d-none');
+    }));
+  }
+  jInput?.addEventListener('input', renderJasaResults);
+
+  // Force Daftar once after wire-up
+  setTimeout(()=>{ try{ btnDaftarH?.click(); }catch(e){} }, 0);
+
   const wrap = $id('quickCash'); wrap.innerHTML='';
   QC_DEFAULT.forEach(v=>{
     const b=document.createElement('button');
@@ -400,13 +623,15 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
   });
 })();
 
-/* mode Barang */
+/* mode Barang (global) */
 const btnCariB = $id('btnModeCariBarang'), btnDaftarB = $id('btnModeDaftarBarang');
 const modeCariB = $id('modeCariBarang'), modeDaftarB = $id('modeDaftarBarang');
-btnCariB.onclick   = ()=>{ btnCariB.classList.add('active'); btnDaftarB.classList.remove('active'); modeCariB.classList.remove('d-none'); modeDaftarB.classList.add('d-none'); };
-btnDaftarB.onclick = ()=>{ btnDaftarB.classList.add('active'); btnCariB.classList.remove('active'); modeDaftarB.classList.remove('d-none'); modeCariB.classList.add('d-none'); renderBarangGrid('*'); };
+if(btnCariB && btnDaftarB){
+  btnCariB.onclick   = ()=>{ btnCariB.classList.add('active'); btnDaftarB.classList.remove('active'); modeCariB.classList.remove('d-none'); modeDaftarB.classList.add('d-none'); };
+  btnDaftarB.onclick = ()=>{ btnDaftarB.classList.add('active'); btnCariB.classList.remove('active'); modeDaftarB.classList.remove('d-none'); modeCariB.classList.add('d-none'); renderBarangGrid('*'); };
+}
 
-/* cari Barang */
+/* cari Barang (global) */
 const bSearch=$id('barangSearch'), bResults=$id('barangResults'),
       bSelInfo=$id('barangSelectedInfo'), bSelName=$id('barangSelectedName'),
       unitChipsWrap=$id('unitChipsWrap'), unitChipsEl=$id('unitChips');
@@ -443,14 +668,15 @@ bSearch?.addEventListener('keydown',(e)=>{
   if(e.key==='Enter'){e.preventDefault(); if(bCursor>=0) selectBarang(bList[bCursor]);}
   if(e.key==='Escape'){e.preventDefault(); closeResultsB();}
 });
-document.addEventListener('click',(e)=>{ if(!bResults.contains(e.target) && e.target!==bSearch) closeResultsB(); });
+document.addEventListener('click',(e)=>{ if(!bResults?.contains(e.target) && e.target!==bSearch) closeResultsB(); });
 
-/* daftar Barang */
+/* daftar Barang (global) */
 const bGrid = $id('barangGrid');
 document.querySelectorAll('.alpha-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ document.querySelectorAll('.alpha-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderBarangGrid(btn.dataset.letter); });
 });
 function renderBarangGrid(letter='*'){
+  if(!bGrid) return;
   bGrid.innerHTML='';
   const list = barangs.filter(b=>{
     if(letter==='*') return true;
@@ -459,7 +685,8 @@ function renderBarangGrid(letter='*'){
   if(!list.length){ bGrid.innerHTML='<div class="muted p-2">Tidak ada barang.</div>'; return; }
   list.forEach(b=>{
     const div=document.createElement('div'); div.className='tile';
-    div.innerHTML=`<div class="ico"><i class="bi bi-box-seam"></i></div><div class="name">${b.nama}</div>`;
+    const thumb = b.image_url ? `<img src="${b.image_url}" alt="${(b.nama||'').replace(/</g,'&lt;')}" onerror=\"this.outerHTML='B'\">` : 'B';
+    div.innerHTML=`<div class="ico">${thumb}</div><div class="name">${b.nama}</div>`;
     div.onclick=()=>{
       bGrid.querySelectorAll('.tile').forEach(t=>t.classList.remove('active'));
       div.classList.add('active');
@@ -469,7 +696,7 @@ function renderBarangGrid(letter='*'){
   });
 }
 
-/* Unit chips */
+/* Unit chips (global) */
 function renderUnitChips(barangId){
   const rows=unitMap[barangId]||[]; unitChipsEl.innerHTML='';
   rows.forEach(u=>{
@@ -483,18 +710,20 @@ function renderUnitChips(barangId){
 function selectUnitChip(btn){
   unitChipsEl.querySelectorAll('.unit-chip').forEach(el=>el.classList.remove('active'));
   btn.classList.add('active');
-  pickedBarang = {...pickedBarang, unit_id:+btn.dataset.unitId, unit_kode:btn.dataset.k, stok:+btn.dataset.s||0, harga:+btn.dataset.h||0 };
-  $id('stokView').value=idFormat(pickedBarang.stok);
-  $id('hargaBarang').value=idFormat(pickedBarang.harga);
+  pickedBarang = {...(pickedBarang||{}), unit_id:+btn.dataset.unitId, unit_kode:btn.dataset.k, stok:+btn.dataset.s||0, harga:+btn.dataset.h||0 };
+  $id('stokView').value=idFormat(pickedBarang.stok||0);
+  $id('hargaBarang').value=idFormat(pickedBarang.harga||0);
 }
 
-/* mode Jasa */
+/* mode Jasa (global) */
 const btnCariJ = $id('btnModeCariJasa'), btnDaftarJ = $id('btnModeDaftarJasa');
 const modeCariJ = $id('modeCariJasa'), modeDaftarJ = $id('modeDaftarJasa');
-btnCariJ.onclick   = ()=>{ btnCariJ.classList.add('active'); btnDaftarJ.classList.remove('active'); modeCariJ.classList.remove('d-none'); modeDaftarJ.classList.add('d-none'); };
-btnDaftarJ.onclick = ()=>{ btnDaftarJ.classList.add('active'); btnCariJ.classList.remove('active'); modeDaftarJ.classList.remove('d-none'); modeCariJ.classList.add('d-none'); renderJasaGrid('*'); };
+if(btnCariJ && btnDaftarJ){
+  btnCariJ.onclick   = ()=>{ btnCariJ.classList.add('active'); btnDaftarJ.classList.remove('active'); modeCariJ.classList.remove('d-none'); modeDaftarJ.classList.add('d-none'); };
+  btnDaftarJ.onclick = ()=>{ btnDaftarJ.classList.add('active'); btnCariJ.classList.remove('active'); modeDaftarJ.classList.remove('d-none'); modeCariJ.classList.add('d-none'); renderJasaGrid('*'); };
+}
 
-/* cari Jasa */
+/* cari Jasa (global) */
 const jSearch=$id('jasaSearch'), jResults=$id('jasaResults'),
       jSelInfo=$id('jasaSelectedInfo'), jSelName=$id('jasaSelectedName');
 
@@ -515,7 +744,7 @@ function selectJasa(it){
   pickedJasa = { id:it.id, nama:it.nama, harga:it.harga||0 };
   jSelName.textContent=it.nama; jSelInfo.classList.remove('d-none');
   jSearch.value=''; closeResultsJ();
-  $id('hargaJasa').value = idFormat(pickedJasa.harga);
+  $id('hargaJasa').value = idFormat(pickedJasa.harga||0);
 }
 function resetJasaPick(){
   pickedJasa=null; jSelInfo.classList.add('d-none');
@@ -529,14 +758,15 @@ jSearch?.addEventListener('keydown',(e)=>{
   if(e.key==='Enter'){e.preventDefault(); if(jCursor>=0) selectJasa(jList[jCursor]);}
   if(e.key==='Escape'){e.preventDefault(); closeResultsJ();}
 });
-document.addEventListener('click',(e)=>{ if(!jResults.contains(e.target) && e.target!==jSearch) closeResultsJ(); });
+document.addEventListener('click',(e)=>{ if(!jResults?.contains(e.target) && e.target!==jSearch) closeResultsJ(); });
 
-/* daftar Jasa */
+/* daftar Jasa (global) */
 const jGrid = $id('jasaGrid');
 document.querySelectorAll('.alpha-j').forEach(btn=>{
   btn.addEventListener('click',()=>{ document.querySelectorAll('.alpha-j').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderJasaGrid(btn.dataset.letter); });
 });
 function renderJasaGrid(letter='*'){
+  if(!jGrid) return;
   jGrid.innerHTML='';
   const list = jasas.filter(j=>{
     if(letter==='*') return true;
@@ -545,7 +775,8 @@ function renderJasaGrid(letter='*'){
   if(!list.length){ jGrid.innerHTML='<div class="muted p-2">Tidak ada jasa.</div>'; return; }
   list.forEach(j=>{
     const div=document.createElement('div'); div.className='tile';
-    div.innerHTML=`<div class="ico"><i class="bi bi-wrench-adjustable"></i></div><div class="name">${j.nama}</div>`;
+    const thumb = j.image_url ? `<img src="${j.image_url}" alt="${(j.nama||'').replace(/</g,'&lt;')}" onerror=\"this.outerHTML='J'\">` : 'J';
+    div.innerHTML=`<div class="ico">${thumb}</div><div class="tile-content"><div class="name">${j.nama}</div>${j.harga?`<div class=\"price\">Rp${(j.harga||0).toLocaleString('id-ID')}</div>`:''}</div>`;
     div.onclick=()=>{
       jGrid.querySelectorAll('.tile').forEach(t=>t.classList.remove('active'));
       div.classList.add('active');
@@ -555,9 +786,10 @@ function renderJasaGrid(letter='*'){
   });
 }
 
-/* money */
+/* money (bind sekali) */
 bindMoneyInput($id('dibayar_view'), raw => { $id('dibayar').value=raw; hitungKembalian(); });
-bindMoneyInput($id('hargaBarang')); bindMoneyInput($id('hargaJasa'));
+bindMoneyInput($id('hargaBarang'));
+bindMoneyInput($id('hargaJasa'));
 
 /* qty helper */
 function stepQty(id,delta){ const el=$id(id); el.value=Math.max(1,(+el.value||1)+delta); }
@@ -567,7 +799,7 @@ function tambahBarang(){
   if(!pickedBarang || !pickedBarang.id){ alert('Pilih barang.'); return; }
   if(!pickedBarang.unit_id){ alert('Pilih unit.'); return; }
   const qty=+$id('qtyBarang').value||1, harga=clean($id('hargaBarang').value);
-  if(qty>pickedBarang.stok){ alert('Qty melebihi stok.'); return; }
+  if(qty>+(pickedBarang.stok||0)){ alert('Qty melebihi stok.'); return; }
   cart.push({tipe:'barang', barang_id:pickedBarang.id, jasa_id:null, unit_id:pickedBarang.unit_id, unit_kode:pickedBarang.unit_kode, nama:pickedBarang.nama, qty, harga});
   renderCart(); $id('qtyBarang').value=1;
 }
@@ -635,7 +867,7 @@ function hitungKembalian(){
   const kembali = Math.max(0, dibayar - total);
   $id('kembalianView').textContent = rupiah(kembali);
 }
-$id('btnUangPas').addEventListener('click', ()=>{
+$id('btnUangPas')?.addEventListener('click', ()=>{
   if ($id('dibayar_view').disabled) return; // QRIS → nonaktif
   let total=0; cart.forEach(it=> total+=it.harga*it.qty);
   $id('dibayar').value = total; $id('dibayar_view').value = idFormat(total); hitungKembalian();
@@ -653,19 +885,20 @@ function onMetodeChange(){
     $id('dibayar').value = 0; $id('dibayar_view').value = idFormat(0); hitungKembalian();
   }
 }
-metodeSel.addEventListener('change', onMetodeChange);
+metodeSel?.addEventListener('change', onMetodeChange);
 
 /* shortcuts */
 document.addEventListener('keydown',(e)=>{
-  if(e.key==='F2'){ e.preventDefault(); document.querySelector('#barang-tab')?.click(); btnDaftarB.click(); }
-  if(e.key==='F3'){ e.preventDefault(); document.querySelector('#jasa-tab')?.click(); btnDaftarJ.click(); }
+  if(e.key==='F2'){ e.preventDefault(); document.querySelector('#barang-tab')?.click(); document.getElementById('btnModeDaftarBarang')?.click?.(); }
+  if(e.key==='F3'){ e.preventDefault(); document.querySelector('#jasa-tab')?.click(); document.getElementById('btnModeDaftarJasa')?.click?.(); }
   if(e.key==='F4'){ e.preventDefault(); if(!$id('dibayar_view').disabled) $id('dibayar_view')?.focus(); }
   if(e.key==='F9'){ e.preventDefault(); document.getElementById('posForm').requestSubmit(); }
 });
 
 /* init */
 bindMoneyInput($id('dibayar_view'), raw => { $id('dibayar').value=raw; hitungKembalian(); });
-bindMoneyInput($id('hargaBarang')); bindMoneyInput($id('hargaJasa'));
+bindMoneyInput($id('hargaBarang'));
+bindMoneyInput($id('hargaJasa'));
 renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange();
 </script>
 @endsection

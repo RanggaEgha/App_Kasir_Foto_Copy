@@ -32,8 +32,8 @@
 
   {{-- ===== BADGE STATUS & PAYMENT (tambahan) ===== --}}
   <div class="mb-3">
-    <span class="badge bg-secondary">Draft</span>
-    <span class="badge bg-secondary">Unpaid</span>
+    <span class="badge bg-secondary">Draf</span>
+    <span class="badge bg-secondary">Belum dibayar</span>
   </div>
   {{-- ===== /BADGE ===== --}}
 

@@ -42,13 +42,17 @@
       $status = $transaksi->status ?? 'posted';
       $paymentStatus = $transaksi->payment_status ?? 'unpaid';
       $payClass = ['paid'=>'success','partial'=>'warning','unpaid'=>'secondary'][$paymentStatus] ?? 'secondary';
-    @endphp
-    <div class="mb-3">
+  @endphp
+  <div class="mb-3">
+      @php
+        $statusId = fn($s) => match($s){ 'draft'=>'Draf','posted'=>'Diposting','void'=>'Dibatalkan', default=>ucfirst((string)$s) };
+        $payId    = fn($s) => match($s){ 'paid'=>'Lunas','partial'=>'Sebagian (parsial)','unpaid'=>'Belum dibayar', default=>ucfirst((string)$s) };
+      @endphp
       <span class="badge bg-{{ $status === 'void' ? 'danger' : 'success' }}">
-        {{ ucfirst($status) }}
+        {{ $statusId($status) }}
       </span>
       <span class="badge bg-{{ $payClass }}">
-        {{ ucfirst($paymentStatus) }}
+        {{ $payId($paymentStatus) }}
       </span>
     </div>
     {{-- ===== /BADGE ===== --}}

@@ -18,11 +18,16 @@
         $payClass = ['paid'=>'success','partial'=>'warning','unpaid'=>'secondary'][$paymentStatus] ?? 'secondary';
       @endphp
       <div class="mb-3">
+        @php
+          $statusId = fn($s) => match($s){ 'draft'=>'Draf','posted'=>'Diposting','void'=>'Dibatalkan', default=>ucfirst((string)$s) };
+          $payId    = fn($s) => match($s){ 'paid'=>'Lunas','partial'=>'Sebagian (parsial)','unpaid'=>'Belum dibayar', default=>ucfirst((string)$s) };
+          $methodId = fn($m) => match($m){ 'cash'=>'Tunai','transfer'=>'Transfer','qris'=>'QRIS', default=>ucfirst((string)$m) };
+        @endphp
         <span class="badge bg-{{ $status === 'void' ? 'danger' : ($status==='draft'?'secondary':'success') }}">
-          {{ ucfirst($status) }}
+          {{ $statusId($status) }}
         </span>
         <span class="badge bg-{{ $payClass }}">
-          {{ ucfirst($paymentStatus) }}
+          {{ $payId($paymentStatus) }}
         </span>
       </div>
 
@@ -33,7 +38,7 @@
           <tr><th>Tanggal</th>
               <td>{{ optional($transaksi->tanggal)->translatedFormat('d F Y • H:i') ?? optional($transaksi->created_at)->format('d M Y H:i') }} WIB</td></tr>
           @if(!empty($transaksi->metode_bayar))
-          <tr><th>Metode Bayar</th><td>{{ ucfirst($transaksi->metode_bayar) }}</td></tr>
+          <tr><th>Metode Bayar</th><td>{{ $methodId($transaksi->metode_bayar) }}</td></tr>
           @endif
           <tr><th>Dibayar</th>
               <td>Rp{{ number_format((int)$transaksi->dibayar,0,',','.') }}</td></tr>

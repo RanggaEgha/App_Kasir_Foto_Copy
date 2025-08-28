@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use App\Services\Audit;
+use App\Models\DiscountRule;
 
 class PembayaranController extends Controller
 {
@@ -36,11 +37,26 @@ class PembayaranController extends Controller
                 ])->values();
             });
 
+        // Diskon otomatis (aturan kuantitas)
+        $rules = DiscountRule::where('is_active', true)
+            ->orderBy('min_qty')
+            ->get(['target_type','target_id','min_qty','discount_type','discount_value']);
+        $rulesMap = ['barang'=>[], 'jasa'=>[]];
+        foreach ($rules as $r) {
+            $key = $r->target_id ?: '*';
+            $rulesMap[$r->target_type][$key][] = [
+                'min_qty' => (int)$r->min_qty,
+                'type'    => $r->discount_type,
+                'value'   => (int)$r->discount_value,
+            ];
+        }
+
         return view('pos.create', [
             'barangs'            => $barangs,
             'jasas'              => $jasas,
             'units'              => $units,
             'unitPricesByBarang' => $unitPrices,
+            'discountRules'      => $rulesMap,
         ]);
     }
 
@@ -52,6 +68,11 @@ class PembayaranController extends Controller
             'dibayar'             => ['required','integer','min:0'],
             'reference'           => ['nullable','string','max:100'],
             'items'               => ['required','array','min:1'],
+            // Diskon invoice (opsional)
+            'discount_type'       => ['nullable','in:percent,amount'],
+            'discount_value'      => ['nullable','integer','min:0'],
+            'discount_reason'     => ['nullable','string','max:255'],
+            'coupon_code'         => ['nullable','string','max:50'],
 
             // Skema item (barang/jasa)
             'items.*.tipe_item'    => ['required','in:barang,jasa'],
@@ -60,6 +81,8 @@ class PembayaranController extends Controller
             'items.*.unit_id'      => ['nullable','integer','required_if:items.*.tipe_item,barang'],
             'items.*.jumlah'       => ['required','integer','min:1'],
             'items.*.harga_satuan' => ['required','integer','min:0'],
+            'items.*.discount_type'=> ['nullable','in:percent,amount'],
+            'items.*.discount_value'=> ['nullable','integer','min:0'],
         ],[
             'items.*.unit_id.required_if'   => 'Unit wajib dipilih untuk barang.',
             'items.*.barang_id.required_if' => 'Barang belum dipilih.',
@@ -95,13 +118,63 @@ class PembayaranController extends Controller
                 Audit::log('transaksi.created', $trx, "Membuat draft transaksi {$trx->kode_transaksi}");
 
                 // 2) Detail + potong stok untuk barang
-                $grand         = 0;
+                $grand         = 0; // total setelah diskon per item
+                $itemDiscSum   = 0; // akumulasi diskon item
                 $itemsSummary  = [];
+
+                // siapkan aturan diskon untuk server-side auto apply
+                $ruleRows = DiscountRule::where('is_active', true)
+                    ->get(['target_type','target_id','min_qty','discount_type','discount_value']);
+                $ruleMap = ['barang'=>[], 'jasa'=>[]];
+                foreach ($ruleRows as $rr) {
+                    $rk = $rr->target_id ?: '*';
+                    $ruleMap[$rr->target_type][$rk][] = $rr;
+                }
 
                 foreach ($data['items'] as $row) {
                     $qty   = (int) $row['jumlah'];
                     $harga = (int) $row['harga_satuan'];
-                    $sub   = $qty * $harga;
+                    $gross = $qty * $harga;
+                    // diskon per item (manual vs. auto dari aturan — ambil nilai terbesar)
+                    $iTypeManual = $row['discount_type'] ?? null;
+                    $iValManual  = (int) ($row['discount_value'] ?? 0);
+                    $iDiscManual = 0;
+                    if ($iTypeManual === 'percent') {
+                        $iDiscManual = (int) floor($gross * min(100, max(0,$iValManual)) / 100);
+                    } elseif ($iTypeManual === 'amount') {
+                        $iDiscManual = min($gross, max(0,$iValManual));
+                    }
+
+                    // cari aturan yg cocok (prioritas: target_id spesifik lalu wildcard '*')
+                    $rulesSpecific = [];
+                    if (($row['tipe_item'] ?? 'barang') === 'barang') {
+                        $rulesSpecific = array_merge(
+                            $ruleMap['barang'][$row['barang_id'] ?? 0] ?? [],
+                            $ruleMap['barang']['*'] ?? []
+                        );
+                    } else {
+                        $rulesSpecific = array_merge(
+                            $ruleMap['jasa'][$row['jasa_id'] ?? 0] ?? [],
+                            $ruleMap['jasa']['*'] ?? []
+                        );
+                    }
+                    $iTypeAuto = null; $iValAuto = 0; $iDiscAuto = 0;
+                    foreach ($rulesSpecific as $rule) {
+                        if ($qty < (int)$rule->min_qty) continue;
+                        if ($rule->discount_type === 'percent') {
+                            $tmp = (int) floor($gross * min(100, max(0,(int)$rule->discount_value)) / 100);
+                            if ($tmp > $iDiscAuto) { $iDiscAuto = $tmp; $iTypeAuto='percent'; $iValAuto=(int)$rule->discount_value; }
+                        } else {
+                            $tmp = min($gross, max(0,(int)$rule->discount_value));
+                            if ($tmp > $iDiscAuto) { $iDiscAuto = $tmp; $iTypeAuto='amount'; $iValAuto=(int)$rule->discount_value; }
+                        }
+                    }
+
+                    // pilih yang terbesar
+                    if ($iDiscAuto > $iDiscManual) { $iType = $iTypeAuto; $iVal = $iValAuto; $iDisc = $iDiscAuto; }
+                    else { $iType = $iTypeManual; $iVal = $iValManual; $iDisc = $iDiscManual; }
+                    $sub = max(0, $gross - $iDisc);
+                    $itemDiscSum += $iDisc;
                     $grand += $sub;
 
                     if ($row['tipe_item'] === 'barang') {
@@ -147,6 +220,7 @@ class PembayaranController extends Controller
                             'qty'      => $qty,
                             'harga'    => $harga,
                             'subtotal' => $sub,
+                            'discount' => $iDisc,
                         ];
                     } else {
                         $jasaNama = Jasa::find($row['jasa_id'])?->nama;
@@ -158,6 +232,7 @@ class PembayaranController extends Controller
                             'qty'      => $qty,
                             'harga'    => $harga,
                             'subtotal' => $sub,
+                            'discount' => $iDisc,
                         ];
                     }
 
@@ -169,19 +244,46 @@ class PembayaranController extends Controller
                         'unit_id'      => $row['tipe_item'] === 'barang' ? (int) $row['unit_id']   : null,
                         'jumlah'       => $qty,
                         'harga_satuan' => $harga,
+                        'discount_type'  => $iType,
+                        'discount_value' => $iVal,
+                        'discount_amount'=> $iDisc,
                         'subtotal'     => $sub,
                     ]);
                 }
+
+                // 2b) Diskon invoice (manual + kupon)
+                $invType = $data['discount_type'] ?? null;
+                $invVal  = (int) ($data['discount_value'] ?? 0);
+                $invDiscManual = 0;
+                if ($invType === 'percent')       $invDiscManual = (int) floor($grand * min(100, max(0,$invVal)) / 100);
+                elseif ($invType === 'amount')    $invDiscManual = min($grand, max(0,$invVal));
+                $coupon = trim((string)($data['coupon_code'] ?? ''));
+                $invDiscCoupon = 0;
+                if ($coupon !== '') {
+                    // Contoh rule sederhana; sesuaikan nanti dg tabel kupon
+                    if (strcasecmp($coupon, 'HEMAT10')===0) {
+                        $invDiscCoupon = (int) floor($grand * 0.10);
+                    } elseif (strcasecmp($coupon, 'POTONG1000')===0) {
+                        $invDiscCoupon = min($grand, 1000);
+                    }
+                }
+                $invDiscTotal = min($grand, $invDiscManual + $invDiscCoupon);
+                $grandNet     = max(0, $grand - $invDiscTotal);
 
                 // 3) Finalisasi header
                 $dibayar = (int) $data['dibayar'];
                 $trx->update([
                     'status'         => 'posted',
                     'posted_at'      => now(),
-                    'total_harga'    => $grand,
+                    'total_harga'    => $grandNet,
                     'dibayar'        => $dibayar,
-                    'kembalian'      => max(0, $dibayar - $grand),
-                    'payment_status' => $dibayar >= $grand ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
+                    'kembalian'      => max(0, $dibayar - $grandNet),
+                    'payment_status' => $dibayar >= $grandNet ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
+                    'discount_type'  => $invType,
+                    'discount_value' => $invVal,
+                    'discount_amount'=> $invDiscTotal,
+                    'discount_reason'=> $data['discount_reason'] ?? null,
+                    'coupon_code'    => $coupon ?: null,
                 ]);
 
                 Audit::log(
@@ -189,12 +291,16 @@ class PembayaranController extends Controller
                     subject: $trx,
                     description: "Posting transaksi {$trx->kode_transaksi}",
                     properties: [
-                        'total_harga' => (int) $grand,
+                        'total_harga' => (int) $grandNet,
                         'dibayar'     => $dibayar,
-                        'kembalian'   => max(0, $dibayar - $grand),
-                        'status_bayar'=> $dibayar >= $grand ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
+                        'kembalian'   => max(0, $dibayar - $grandNet),
+                        'status_bayar'=> $dibayar >= $grandNet ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
                         'metode'      => $data['metode_bayar'],
                         'items'       => $itemsSummary,
+                        'discount_item_total' => (int) $itemDiscSum,
+                        'discount_invoice'    => (int) $invDiscTotal,
+                        'coupon_code'         => $coupon ?: null,
+                        'discount_reason'     => $data['discount_reason'] ?? null,
                     ]
                 );
 

@@ -5,6 +5,8 @@ return [
     'address'    => env('STORE_ADDRESS', 'Karang Pawitan'),
     'ig'         => env('STORE_IG',      '@Boom_Center'),
     'city'       => env('STORE_CITY',    'Karawng'),
+    'phone'      => env('STORE_PHONE',   ''),
+    'logo_url'   => env('STORE_LOGO_URL',''),
 
     // angka
     'tax_rate'   => (float) env('STORE_TAX_RATE', 0),  // 0.10 untuk 10%

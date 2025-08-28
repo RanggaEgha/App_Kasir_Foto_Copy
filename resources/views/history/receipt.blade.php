@@ -2,10 +2,18 @@
 @section('title', 'Struk '.$transaksi->kode_transaksi)
 
 @php
-  $rp = fn($v) => 'Rp'.number_format((int)$v,0,',','.');
+  $rp = fn($v) => 'Rp '.number_format((int)$v,0,',','.');
 
   // angka dasar
   $subTotal = (int)($transaksi->total_harga ?? 0);
+  // hitung diskon dari item & nota (invoice)
+  $gross = 0; $netItems = 0;
+  foreach(($transaksi->items ?? []) as $it){
+    $gross    += (int)$it->jumlah * (int)$it->harga_satuan;
+    $netItems += (int)$it->subtotal;
+  }
+  $itemDisc = max(0, $gross - $netItems);
+  $invDisc  = (int)($transaksi->discount_amount ?? 0);
 
   // konfig pajak & pembulatan (opsional, bisa diset di config/store.php)
   $taxRate   = config('store.tax_rate', 0);            // contoh: 0.10
@@ -36,19 +44,28 @@
   $store = [
     'name'    => config('store.name',    'Nama Toko'),
     'address' => config('store.address', 'Alamat Toko'),
-    'ig'      => config('store.ig',      '@toko.ig'),
-    'city'    => config('store.city',    'Kota'),
+    'city'    => config('store.city',    ''),
+    'ig'      => config('store.ig',      ''),
+    'phone'   => config('store.phone',   env('STORE_PHONE')),
+    'logo'    => config('store.logo_url', env('STORE_LOGO_URL')),
   ];
+  $storeAddrMultiline = str_replace('\\n', "\n", (string)($store['address'] ?? ''));
 @endphp
 
 @section('content')
 
   {{-- Header toko --}}
   <div class="center">
+    @if(!empty($store['logo']))
+      <div style="margin-bottom:4px"><img src="{{ $store['logo'] }}" alt="logo" style="max-width:120px; max-height:60px"></div>
+    @endif
+    @if(request()->boolean('reprint'))
+      <div class="muted" style="margin-bottom:4px">(Reprint)</div>
+    @endif
     <h3 style="font-weight:800">{{ $store['name'] }}</h3>
-    <div>{{ $store['address'] }}</div>
-    <div class="muted">IG {{ $store['ig'] }}</div>
-    <div class="muted">{{ $store['city'] }}</div>
+    @if(!empty($store['address']))<div>{!! nl2br(e($storeAddrMultiline)) !!}</div>@endif
+    @if(!empty($store['city']))   <div class="muted">{{ $store['city'] }}</div>@endif
+    @if(!empty($store['phone']))  <div class="muted">{{ $store['phone'] }}</div>@endif
   </div>
 
   <div class="hr"></div>
@@ -56,13 +73,12 @@
   {{-- Info transaksi --}}
   <div class="row mono">
     <div>
-      <div>{{ optional($transaksi->tanggal ?? $transaksi->created_at)->format('d M Y') }}</div>
-      <div>Kasir: {{ $kasir }}</div>
-      <div>Shift: {{ $shiftN }}</div>
+      <div>Waktu : {{ optional($transaksi->tanggal ?? $transaksi->created_at)->translatedFormat('d M Y H:i') }}</div>
+      <div>Kasir : {{ $kasir }}</div>
+      <div>#{{ $transaksi->kode_transaksi }}</div>
     </div>
     <div class="right" style="text-align:right">
-      <div class="muted">No.</div>
-      <div style="font-weight:700">{{ $transaksi->kode_transaksi }}</div>
+      {{-- kanan dibiarkan kosong agar pola mirip contoh --}}
     </div>
   </div>
 
@@ -78,13 +94,13 @@
       @endphp
 
       <div class="line">
-        <div class="row">
-          <div class="name">{{ $nama }}</div>
-          <div class="amt">{{ $rp($it->subtotal) }}</div>
-        </div>
-        <div class="meta mono">
-          <div>{{ $qty }} x @ {{ $rp($it->harga_satuan) }} {{ $unit ? "($unit)" : "" }}</div>
-          <div></div>
+        <div class="name">{{ $nama }}</div>
+        @if($unit)
+          <div class="mono muted" style="margin-top:2px">{{ strtoupper($unit) }}</div>
+        @endif
+        <div class="row mono" style="margin-top:2px">
+          <div>{{ number_format((int)$it->harga_satuan,0,',','.') }} x{{ $qty }}</div>
+          <div>{{ number_format((int)$it->subtotal,0,',','.') }}</div>
         </div>
       </div>
     @endforeach
@@ -94,7 +110,18 @@
 
   {{-- Ringkasan --}}
   <div class="totals">
-    <div class="row"><div class="label">Sub Total</div><div class="amt">{{ $rp($subTotal) }}</div></div>
+    @if(($itemDisc + $invDisc) > 0)
+      <div class="row"><div class="label">Bruto</div><div class="amt">{{ $rp($gross) }}</div></div>
+      @if($itemDisc>0)
+        <div class="row"><div class="label">Diskon Item</div><div class="amt">-{{ $rp($itemDisc) }}</div></div>
+      @endif
+      @if($invDisc>0)
+        <div class="row"><div class="label">Diskon Nota</div><div class="amt">-{{ $rp($invDisc) }}</div></div>
+      @endif
+    @endif
+    @if(($taxRate ?? 0) > 0)
+      <div class="row"><div class="label">Sub Total</div><div class="amt">{{ $rp($subTotal) }}</div></div>
+    @endif
     @if($taxRate > 0)
       <div class="row"><div class="label">Pajak {{ (int)round($taxRate*100) }}%</div><div class="amt">{{ $rp($pajak) }}</div></div>
     @endif
@@ -102,7 +129,7 @@
       <div class="row"><div class="label">Pembulatan</div><div class="amt">{{ ($pembulatan>0?'+':'').$rp($pembulatan) }}</div></div>
     @endif
     <div class="hr-solid"></div>
-    <div class="row grand"><div>Grand Total</div><div>{{ $rp($grandTotal) }}</div></div>
+    <div class="row grand"><div>Total</div><div>{{ $rp($grandTotal) }}</div></div>
   </div>
 
   <div class="hr"></div>
@@ -110,15 +137,24 @@
   {{-- Pembayaran --}}
   <div class="row mono">
     <div style="text-transform:uppercase">{{ $method }}{!! $reference ? ' — '.$reference : '' !!}</div>
-    <div style="font-weight:700">{{ $rp($grandTotal) }}</div>
+    <div style="font-weight:700">{{ $rp($transaksi->dibayar) }}</div>
+  </div>
+  <div class="row mono" style="margin-top:2px">
+    <div>Kembalian</div>
+    <div>{{ $rp($transaksi->kembalian) }}</div>
   </div>
 
   <div class="hr"></div>
 
   {{-- Footer --}}
   <div class="footer center">
+    <div>Barang Yang Sudah Dibeli</div>
+    <div>Tidak Dapat Ditukar</div>
     <div>Terimakasih</div>
-    <div class="muted">Follow IG kami: {{ $store['ig'] }}</div>
+    <div>Hormat Kami</div>
+    @if(!empty($store['ig']))
+      <div class="muted">IG {{ $store['ig'] }}</div>
+    @endif
   </div>
 
   {{-- Tombol aksi (tidak ikut tercetak) --}}

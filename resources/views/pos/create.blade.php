@@ -142,12 +142,13 @@
                     <th style="width:110px">Unit</th>
                     <th class="text-end" style="width:180px">Qty</th>
                     <th class="text-end" style="width:160px">Harga</th>
+                    <th class="text-end" style="width:190px">Diskon</th>
                     <th class="text-end" style="width:160px">Subtotal</th>
                     <th style="width:60px"></th>
                   </tr>
                 </thead>
                 <tbody id="cartBody">
-                  <tr class="text-muted"><td colspan="7" class="text-center py-4">Belum ada item</td></tr>
+                  <tr class="text-muted"><td colspan="8" class="text-center py-4">Belum ada item</td></tr>
                 </tbody>
               </table>
             </div>
@@ -328,6 +329,28 @@
             </div>
 
             <div class="mb-3">
+              <label class="form-label">Diskon Nota</label>
+              <div class="row g-2 align-items-center mb-2">
+                <div class="col-6">
+                  <select class="form-select" name="discount_type" id="discType">
+                    <option value="">— tidak ada —</option>
+                    <option value="amount">Rp (nominal)</option>
+                    <option value="percent">% (persen)</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <input id="discValue_view" type="text" class="form-control" placeholder="0">
+                  <input id="discValue" name="discount_value" type="hidden" value="0">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6"><input type="text" name="coupon_code" id="couponCode" class="form-control" placeholder="Kupon (opsional)"></div>
+                <div class="col-6"><input type="text" name="discount_reason" class="form-control" placeholder="Alasan (opsional)"></div>
+              </div>
+              <div class="small text-muted">Potongan: <span id="discAmountPreview">Rp0</span></div>
+            </div>
+
+            <div class="mb-3">
               <label class="form-label">Nominal Dibayar (Rp)</label>
               <input id="dibayar_view" type="text" class="form-control money" value="0">
               <input id="dibayar" name="dibayar" type="hidden" value="0">
@@ -361,6 +384,7 @@
   $map = ($unitPricesByBarang ?? collect())->mapWithKeys(function($rows, $barangId){
     return [$barangId => $rows->toArray()];
   });
+  $discRules = $discountRules ?? ['barang'=>[], 'jasa'=>[]];
   $barangsSimple = $barangs->map(fn($b)=>[
     'id'        => $b->id,
     'nama'      => $b->nama,
@@ -379,6 +403,7 @@
 const unitMap = @json($map);
 const barangs = @json($barangsSimple);
 const jasas   = @json($jasasSimple);
+const discRules = @json($discRules);
 
 /* state (GLOBAL, satu sumber) */
 let cart = [];
@@ -800,13 +825,17 @@ function tambahBarang(){
   if(!pickedBarang.unit_id){ alert('Pilih unit.'); return; }
   const qty=+$id('qtyBarang').value||1, harga=clean($id('hargaBarang').value);
   if(qty>+(pickedBarang.stok||0)){ alert('Qty melebihi stok.'); return; }
-  cart.push({tipe:'barang', barang_id:pickedBarang.id, jasa_id:null, unit_id:pickedBarang.unit_id, unit_kode:pickedBarang.unit_kode, nama:pickedBarang.nama, qty, harga});
+  const line={tipe:'barang', barang_id:pickedBarang.id, jasa_id:null, unit_id:pickedBarang.unit_id, unit_kode:pickedBarang.unit_kode, nama:pickedBarang.nama, qty, harga, discType:'', discVal:0, discManual:false};
+  applyAutoDisc(line);
+  cart.push(line);
   renderCart(); $id('qtyBarang').value=1;
 }
 function tambahJasa(){
   if(!pickedJasa || !pickedJasa.id){ alert('Pilih jasa.'); return; }
   const qty=+$id('qtyJasa').value||1, harga=clean($id('hargaJasa').value);
-  cart.push({tipe:'jasa', barang_id:null, jasa_id:pickedJasa.id, unit_id:null, unit_kode:null, nama:pickedJasa.nama, qty, harga});
+  const line={tipe:'jasa', barang_id:null, jasa_id:pickedJasa.id, unit_id:null, unit_kode:null, nama:pickedJasa.nama, qty, harga, discType:'', discVal:0, discManual:false};
+  applyAutoDisc(line);
+  cart.push(line);
   renderCart(); $id('qtyJasa').value=1;
 }
 
@@ -814,10 +843,17 @@ function tambahJasa(){
 function renderCart(){
   const body=$id('cartBody'), hidden=$id('itemsHidden');
   body.innerHTML=''; hidden.innerHTML='';
-  if(cart.length===0){ body.innerHTML='<tr class="text-muted"><td colspan="7" class="text-center py-4">Belum ada item</td></tr>'; updateTotals(); return; }
+  if(cart.length===0){ body.innerHTML='<tr class="text-muted"><td colspan="8" class="text-center py-4">Belum ada item</td></tr>'; updateTotals(); return; }
   let grand=0;
   cart.forEach((it,i)=>{
-    const sub=it.qty*it.harga; grand+=sub;
+    // normalisasi field diskon
+    it.discType = it.discType || '';
+    it.discVal  = Number(it.discVal||0);
+    const gross = it.qty*it.harga;
+    let dAmt = 0;
+    if(it.discType==='percent'){ dAmt = Math.floor(gross * Math.min(100, Math.max(0,it.discVal)) / 100); }
+    else if(it.discType==='amount'){ dAmt = Math.min(gross, Math.max(0,it.discVal)); }
+    const sub = Math.max(0, gross - dAmt); grand+=sub;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td><span class="badge ${it.tipe==='barang'?'text-bg-primary':'text-bg-success'} pill text-capitalize">${it.tipe}</span></td>
@@ -834,6 +870,17 @@ function renderCart(){
         <input type="text" value="${idFormat(it.harga)}" class="form-control text-end"
                oninput="onMoneyEdit(${i}, this)" onblur="onMoneyEdit(${i}, this)">
       </td>
+      <td class="text-end">
+        <div class="input-group input-group-sm">
+          <input type="text" value="${it.discType==='percent' ? (Number(it.discVal)||0) : idFormat(Number(it.discVal)||0)}" class="form-control text-end"
+                 oninput="onDiscEdit(${i}, this)" placeholder="0">
+          <select class="form-select" onchange="onDiscTypeChange(${i}, this)">
+            <option value="" ${!it.discType?'selected':''}>—</option>
+            <option value="amount" ${it.discType==='amount'?'selected':''}>Rp</option>
+            <option value="percent" ${it.discType==='percent'?'selected':''}>%</option>
+          </select>
+        </div>
+      </td>
       <td class="text-end fw-semibold">${rupiah(sub)}</td>
       <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" onclick="hapusItem(${i})"><i class="bi bi-x-lg"></i></button></td>
     `;
@@ -846,6 +893,8 @@ function renderCart(){
       <input type="hidden" name="items[${i}][unit_id]" value="${it.unit_id ?? ''}">
       <input type="hidden" name="items[${i}][jumlah]" value="${it.qty}">
       <input type="hidden" name="items[${i}][harga_satuan]" value="${it.harga}">
+      <input type="hidden" name="items[${i}][discount_type]" value="${it.discType||''}">
+      <input type="hidden" name="items[${i}][discount_value]" value="${Number(it.discVal)||0}">
     `);
   });
   $id('grandTotal').textContent = rupiah(grand);
@@ -854,22 +903,47 @@ function renderCart(){
 }
 function onMoneyEdit(i, el){ const v=clean(el.value); cart[i].harga=v; el.value=idFormat(v); renderCart(); }
 function editQty(i,d){ cart[i].qty=Math.max(1,(cart[i].qty||1)+d); renderCart(); }
-function onCellEdit(i,field,el){ let v=+el.value||0; if(field==='qty') v=Math.max(1,v); cart[i][field]=v; renderCart(); }
+function onCellEdit(i,field,el){ let v=+el.value||0; if(field==='qty') v=Math.max(1,v); cart[i][field]=v; if(field==='qty' && !cart[i].discManual) applyAutoDisc(cart[i]); renderCart(); }
+function onDiscTypeChange(i, sel){ cart[i].discType = sel.value; cart[i].discManual=true; if(sel.value==='percent'){ cart[i].discVal = Math.min(100, Math.max(0, Number(cart[i].discVal||0))); } else { cart[i].discVal = Number(cart[i].discVal||0); } renderCart(); }
+function onDiscEdit(i, el){ const t=cart[i].discType||''; let v = el.value||''; cart[i].discManual=true; if(t==='percent'){ v = v.replace(/[^0-9]/g,''); cart[i].discVal = Math.min(100, Math.max(0, Number(v||0))); } else { cart[i].discVal = clean(v); } renderCart(); }
 function hapusItem(i){ cart.splice(i,1); renderCart(); }
 
 function kosongkanKeranjang(){ if(!confirm('Kosongkan keranjang?')) return; cart=[]; renderCart(); }
-function updateTotals(){ let g=0; cart.forEach(it=>g+=it.qty*it.harga); $id('grandTotal').textContent=rupiah(g); $id('totalTop').textContent=rupiah(g); hitungKembalian(); }
+function updateTotals(){
+  const itemsTotal = cart.reduce((sum,it)=>{
+    const gross=it.qty*it.harga; let d=0; if(it.discType==='percent') d=Math.floor(gross*Math.min(100,Math.max(0,Number(it.discVal||0)))/100); else if(it.discType==='amount') d=Math.min(gross, Number(it.discVal||0)); return sum + Math.max(0, gross-d);
+  },0);
+  const invType = ($id('discType')?.value)||'';
+  const invVal  = Number(($id('discValue')?.value)||0);
+  let invAmt=0; if(invType==='percent'){ invAmt=Math.floor(itemsTotal*Math.min(100,Math.max(0,invVal))/100); } else if(invType==='amount'){ invAmt=Math.min(itemsTotal, Math.max(0,invVal)); }
+  const grand = Math.max(0, itemsTotal - invAmt);
+  $id('discAmountPreview').textContent = rupiah(invAmt);
+  $id('grandTotal').textContent=rupiah(grand);
+  $id('totalTop').textContent=rupiah(grand);
+  hitungKembalian();
+}
 
 /* pembayaran */
 function hitungKembalian(){
-  let total=0; cart.forEach(it=> total+=it.qty*it.harga);
+  // total setelah diskon item + diskon nota
+  const itemsTotal = cart.reduce((sum,it)=>{
+    const gross=it.qty*it.harga; let d=0; if(it.discType==='percent') d=Math.floor(gross*Math.min(100,Math.max(0,Number(it.discVal||0)))/100); else if(it.discType==='amount') d=Math.min(gross, Number(it.discVal||0)); return sum + Math.max(0, gross-d);
+  },0);
+  const invType = ($id('discType')?.value)||'';
+  const invVal  = Number(($id('discValue')?.value)||0);
+  let invAmt=0; if(invType==='percent'){ invAmt=Math.floor(itemsTotal*Math.min(100,Math.max(0,invVal))/100); } else if(invType==='amount'){ invAmt=Math.min(itemsTotal, Math.max(0,invVal)); }
+  const total = Math.max(0, itemsTotal - invAmt);
   const dibayar = clean($id('dibayar').value);
   const kembali = Math.max(0, dibayar - total);
   $id('kembalianView').textContent = rupiah(kembali);
 }
 $id('btnUangPas')?.addEventListener('click', ()=>{
   if ($id('dibayar_view').disabled) return; // QRIS → nonaktif
-  let total=0; cart.forEach(it=> total+=it.harga*it.qty);
+  let itemsTotal=0; cart.forEach(it=>{ const gross=it.harga*it.qty; let d=0; if(it.discType==='percent') d=Math.floor(gross*Math.min(100,Math.max(0,Number(it.discVal||0)))/100); else if(it.discType==='amount') d=Math.min(gross, Number(it.discVal||0)); itemsTotal+=Math.max(0,gross-d); });
+  const invType = ($id('discType')?.value)||'';
+  const invVal  = Number(($id('discValue')?.value)||0);
+  let invAmt=0; if(invType==='percent') invAmt=Math.floor(itemsTotal*Math.min(100,Math.max(0,invVal))/100); else if(invType==='amount') invAmt=Math.min(itemsTotal, Math.max(0,invVal));
+  const total = Math.max(0, itemsTotal - invAmt);
   $id('dibayar').value = total; $id('dibayar_view').value = idFormat(total); hitungKembalian();
 });
 
@@ -899,6 +973,62 @@ document.addEventListener('keydown',(e)=>{
 bindMoneyInput($id('dibayar_view'), raw => { $id('dibayar').value=raw; hitungKembalian(); });
 bindMoneyInput($id('hargaBarang'));
 bindMoneyInput($id('hargaJasa'));
-renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange();
+// Diskon nota input bindings
+const discTypeSel = $id('discType');
+const discValView = $id('discValue_view');
+const discValHid  = $id('discValue');
+function onDiscTypeInvoice(){
+  // reset tampilan input
+  const t = discTypeSel.value;
+  if(t===''){
+    discValView.value = '';
+    discValView.disabled = true;
+    discValView.placeholder = '0';
+    discValHid.value = 0;
+  } else {
+    discValView.disabled = false;
+    discValView.value = '0';
+    discValHid.value = 0;
+  }
+  updateTotals();
+}
+discTypeSel?.addEventListener('change', onDiscTypeInvoice);
+discValView?.addEventListener('input', ()=>{
+  const t = discTypeSel.value;
+  if(t==='') { discValHid.value = 0; return updateTotals(); }
+  if(t==='percent'){
+    let v = discValView.value.replace(/[^0-9]/g,''); v = String(Math.min(100, Math.max(0, Number(v||0))));
+    discValHid.value = v; // view biarkan apa adanya untuk kenyamanan
+  } else if(t==='amount'){
+    const raw = clean(discValView.value); discValView.value = idFormat(raw); discValHid.value = raw;
+  } else {
+    discValHid.value = 0;
+  }
+  updateTotals();
+});
+
+// Aturan diskon otomatis (client)
+function computeDiscAmount(gross, type, val){
+  if(type==='percent') return Math.floor(gross * Math.min(100, Math.max(0, Number(val||0))) / 100);
+  if(type==='amount') return Math.min(gross, Math.max(0, Number(val||0)));
+  return 0;
+}
+function bestRuleFor(line){
+  const tipe=line.tipe; const id = (tipe==='barang'? line.barang_id : line.jasa_id) || 0; const qty = Number(line.qty||0); const gross = Number(line.qty||0) * Number(line.harga||0);
+  let candidates = [];
+  const byId = (discRules[tipe]||{})[String(id)] || (discRules[tipe]||{})[id] || [];
+  const wild = (discRules[tipe]||{})['*'] || [];
+  candidates = [...byId, ...wild];
+  let best = {type:'', value:0, amount:0};
+  for(const r of candidates){ if(qty >= (r.min_qty||0)){ const amt=computeDiscAmount(gross, r.type, r.value); if(amt>best.amount){ best={type:r.type, value:r.value, amount:amt}; } } }
+  return best;
+}
+function applyAutoDisc(line){
+  const gross = Number(line.qty||0) * Number(line.harga||0);
+  const auto = bestRuleFor(line); const manualAmt = computeDiscAmount(gross, line.discType||'', line.discVal||0);
+  if(auto.amount > manualAmt){ line.discType = auto.type; line.discVal = auto.value; }
+}
+
+renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange(); onDiscTypeInvoice();
 </script>
 @endsection

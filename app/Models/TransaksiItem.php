@@ -17,6 +17,11 @@ class TransaksiItem extends Model
         'tipe_item',        // barang | jasa
         'jumlah',
         'harga_satuan',
+        // diskon per item
+        'discount_type',    // percent | amount | null
+        'discount_value',
+        'discount_amount',
+        'discount_reason',
         'subtotal',
     ]; // :contentReference[oaicite:6]{index=6}
 

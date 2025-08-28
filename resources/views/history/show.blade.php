@@ -40,6 +40,22 @@
           @if(!empty($transaksi->metode_bayar))
           <tr><th>Metode Bayar</th><td>{{ $methodId($transaksi->metode_bayar) }}</td></tr>
           @endif
+          @php
+            $gross=0; $netItems=0; foreach($transaksi->items as $it){ $gross+=(int)$it->jumlah*(int)$it->harga_satuan; $netItems+=(int)$it->subtotal; }
+            $itemDisc = max(0, $gross - $netItems);
+          @endphp
+          @if($itemDisc>0)
+            <tr><th>Diskon Item</th><td>Rp{{ number_format($itemDisc,0,',','.') }}</td></tr>
+          @endif
+          @if((int)$transaksi->discount_amount > 0)
+            <tr><th>Diskon Nota</th><td>Rp{{ number_format((int)$transaksi->discount_amount,0,',','.') }}</td></tr>
+            @if(!empty($transaksi->discount_reason))
+              <tr><th>Alasan Diskon</th><td>{{ $transaksi->discount_reason }}</td></tr>
+            @endif
+            @if(!empty($transaksi->coupon_code))
+              <tr><th>Kupon</th><td>{{ $transaksi->coupon_code }}</td></tr>
+            @endif
+          @endif
           <tr><th>Dibayar</th>
               <td>Rp{{ number_format((int)$transaksi->dibayar,0,',','.') }}</td></tr>
           <tr><th>Kembalian</th>

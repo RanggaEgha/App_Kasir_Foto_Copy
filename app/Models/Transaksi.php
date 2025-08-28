@@ -17,6 +17,13 @@ class Transaksi extends Model
         'status',           // draft | posted | void
         'payment_status',   // unpaid | partial | paid
 
+        // diskon invoice
+        'discount_type',    // percent | amount | null
+        'discount_value',
+        'discount_amount',
+        'discount_reason',
+        'coupon_code',
+
         'total_harga',
         'dibayar',
         'kembalian',
@@ -37,6 +44,8 @@ class Transaksi extends Model
         'dibayar'     => 'integer',
         'kembalian'   => 'integer',
         'shift_id'    => 'integer',
+        'discount_value'  => 'integer',
+        'discount_amount' => 'integer',
     ];
 
     /** ========== RELASI ========== */

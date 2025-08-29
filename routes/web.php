@@ -72,6 +72,8 @@ Route::middleware(['auth', 'active', 'role:kasir,admin'])->group(function () {
         Route::post('/store', [PembayaranController::class, 'store'])->name('store');          // Simpan transaksi
         Route::post('/pay/{transaksi}', [PembayaranController::class, 'pay'])->name('pay');    // Tambah pembayaran
         Route::post('/void/{transaksi}', [PembayaranController::class, 'void'])->name('void'); // Batalkan transaksi
+        Route::post('/refund/{transaksi}', [PembayaranController::class, 'refund'])->name('refund'); // Refund (pengembalian dana)
+        Route::post('/refund-items/{transaksi}', [PembayaranController::class, 'refundItems'])->name('refund_items'); // Refund per-item + retur stok
     });
 
     // History Transaksi (read-only + actions)

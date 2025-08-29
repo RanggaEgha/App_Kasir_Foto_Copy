@@ -21,7 +21,7 @@
                 <div>
                   <div><strong>Status:</strong> <span class="badge bg-primary">Open</span></div>
                   <div><strong>Dibuka:</strong> {{ $myOpen->opened_at?->format('d/m/Y H:i') }}</div>
-                  <div><strong>Kas Awal:</strong> Rp {{ number_format($myOpen->opening_cash,0,',','.') }}</div>
+                  <div><strong>Kas Awal:</strong> Rp. {{ number_format($myOpen->opening_cash,0,',','.') }}</div>
                   @php
                     $opsOpen = \App\Models\CashMovement::where('shift_id',$myOpen->id)
                       ->selectRaw("SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
@@ -89,7 +89,7 @@
                     @php $noms=[100000,50000,20000,10000,5000,2000,1000,500,200,100]; @endphp
                     @foreach($noms as $n)
                       <div class="col-6 col-md-3 col-lg-2">
-                        <label class="form-label small">Rp {{ number_format($n,0,',','.') }}</label>
+                        <label class="form-label small">Rp. {{ number_format($n,0,',','.') }}</label>
                         <input type="number" name="denom[{{ $n }}]" class="form-control" min="0" value="0">
                       </div>
                     @endforeach
@@ -158,7 +158,7 @@
                     <tr>
                       <td>{{ $m->paid_at?->format('Y-m-d H:i') }}</td>
                       <td><span class="badge {{ $m->direction==='in'?'text-bg-success':'text-bg-danger' }}">{{ strtoupper($m->direction) }}</span></td>
-                      <td>Rp {{ number_format($m->amount,0,',','.') }}</td>
+                      <td>Rp. {{ number_format($m->amount,0,',','.') }}</td>
                       <td>{{ $m->reference }}</td>
                       <td>{{ $m->note }}</td>
                     </tr>
@@ -191,10 +191,10 @@
                 <td>{{ $recent->firstItem() + $idx }}</td>
                 <td>{{ $s->user?->name ?? '—' }}</td>
                 <td>{{ $s->opened_at?->format('d/m/Y H:i') }}</td>
-                <td>Rp {{ number_format($s->opening_cash,0,',','.') }}</td>
+                <td>Rp. {{ number_format($s->opening_cash,0,',','.') }}</td>
                 <td>{{ $s->closed_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                <td>{{ $s->closing_cash !== null ? 'Rp '.number_format($s->closing_cash,0,',','.') : '—' }}</td>
-                <td>Rp {{ number_format($s->expected_cash,0,',','.') }}</td>
+                <td>{{ $s->closing_cash !== null ? 'Rp. '.number_format($s->closing_cash,0,',','.') : '—' }}</td>
+                <td>Rp. {{ number_format($s->expected_cash,0,',','.') }}</td>
                 @php
                   $ops = \App\Models\CashMovement::where('shift_id',$s->id)
                     ->selectRaw("SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
@@ -229,7 +229,7 @@
       </div>
     </div>
     <div class="card-footer">
-      {{ $recent->links() }}
+      {{ $recent->withQueryString()->onEachSide(1)->links('components.pagination.pill-clean') }}
     </div>
   </div>
 

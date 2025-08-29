@@ -42,7 +42,7 @@ class BelowCostSaleNotification extends Notification
             ->subject('⚠️ Penjualan di bawah HPP')
             ->line("Transaksi: #{$i->transaksi_id}")
             ->line("Barang   : {$name} ({$unit})")
-            ->line('Harga    : Rp '.number_format((float)$i->harga,0,',','.'))
-            ->line('HPP      : Rp '.number_format($this->hpp,0,',','.'));
+            ->line('Harga    : Rp. '.number_format((float)$i->harga,0,',','.'))
+            ->line('HPP      : Rp. '.number_format($this->hpp,0,',','.'));
     }
 }

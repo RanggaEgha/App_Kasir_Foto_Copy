@@ -36,7 +36,11 @@ class HistoryTransaksiController extends Controller
         // Filter spesifik (opsional) — asumsi ada local scope Transaksi::filter($status,$payment)
         $q->filter($status, $payment);
 
-        $transaksis = $q->orderByDesc('id')->paginate(20)->withQueryString();
+        $transaksis = $q
+            ->with(['payments:id,transaksi_id,direction,amount'])
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
 
         // Hitung ringkasan badge
         $byStatus  = Transaksi::selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status');

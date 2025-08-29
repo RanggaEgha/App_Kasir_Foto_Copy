@@ -77,7 +77,7 @@
     </div>
 
     <div class="card-footer">
-      {{ $users->onEachSide(1)->links() }}
+      {{ $users->withQueryString()->onEachSide(1)->links('components.pagination.pill-clean') }}
     </div>
   </div>
 </div>

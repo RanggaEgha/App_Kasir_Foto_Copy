@@ -16,7 +16,7 @@
               @if(($d['type'] ?? '')==='stock_low')
                 {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — sisa {{ $d['stok'] ?? 0 }}
               @elseif(($d['type'] ?? '')==='cash_diff')
-                Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
+                Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp. {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
               @elseif(($d['type'] ?? '')==='below_cost')
                 {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP
               @elseif(($d['type'] ?? '')==='void_burst')

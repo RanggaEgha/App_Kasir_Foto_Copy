@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
 
         /* ── Blade directives: uang Rupiah ───────────────────── */
         Blade::directive('rupiah', function ($expression) {
-            return "<?php echo 'Rp '.number_format((float)($expression ?? 0), 0, ',', '.'); ?>";
+            return "<?php echo 'Rp. '.number_format((float)($expression ?? 0), 0, ',', '.'); ?>";
         });
         Blade::directive('idr', function ($expression) {
             return "<?php echo number_format((float)($expression ?? 0), 0, ',', '.'); ?>";

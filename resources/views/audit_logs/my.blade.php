@@ -5,7 +5,7 @@
 @php
   // formatter angka & rupiah
   $nf     = fn($v) => is_numeric($v) ? number_format($v, 0, ',', '.') : (is_bool($v) ? ($v?'true':'false') : ($v===null?'':(string)$v));
-  $rupiah = fn($v) => is_numeric($v) ? 'Rp '.$nf($v) : '';
+  $rupiah = fn($v) => is_numeric($v) ? 'Rp. '.$nf($v) : '';
 
   // parse angka longgar (menerima "1.234,56" / "1234.56")
   $toFloat = function($v){
@@ -29,7 +29,7 @@
   $rows = $logs instanceof \Illuminate\Pagination\LengthAwarePaginator ? $logs->getCollection() : collect($logs);
 
   // kelompok
-  $payments = $rows->filter(fn($l) => $l->event === 'payment.added');
+  $payments = $rows->filter(fn($l) => in_array($l->event, ['payment.added','payment.refund']));
   $stock    = $rows->filter(fn($l) => in_array($l->event, ['stock.decremented','stock.incremented']));
   $barang   = $rows->filter(fn($l) => class_basename($l->subject_type) === 'Barang' && in_array($l->event, ['created','updated','deleted','restored']));
   $trx      = $rows->filter(fn($l) => str_starts_with($l->event, 'transaksi.'));
@@ -41,6 +41,7 @@
     'transaksi.posted'  => 'Mem-finalkan transaksi',
     'transaksi.voided'  => 'Membatalkan transaksi',
     'payment.added'     => 'Menambah pembayaran',
+    'payment.refund'    => 'Refund (pengembalian dana)',
     'stock.decremented' => 'Stok berkurang (terjual)',
     'stock.incremented' => 'Stok bertambah (void/retur)',
     'shift.opened'      => 'Buka shift',
@@ -207,6 +208,7 @@
                   $items = $extractItems($log);
                   $total = $guessTotal($log, $items);
                   $amountPaid = $toFloat($p['amount'] ?? null);
+                  $isRefund = $log->event === 'payment.refund';
                 @endphp
                 <tr>
                   <td>{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
@@ -218,7 +220,7 @@
                     @endif
                   </td>
                   <td>@if($mLbl)<span class="badge-method {{ $mCls }}">{{ $mLbl }}</span>@endif</td>
-                  <td class="text-end col-pay-amount">@if(!is_null($amountPaid))<span class="money">{{ $rupiah($amountPaid) }}</span>@endif</td>
+                  <td class="text-end col-pay-amount">@if(!is_null($amountPaid))<span class="money">{{ $isRefund ? '-' : '' }}{{ $rupiah($amountPaid) }}</span>@endif</td>
                   <td class="col-pay-ref">{{ $p['reference'] ?? '' }}</td>
                   <td class="col-pay-info">
                     {{-- Ringkasan singkat --}}

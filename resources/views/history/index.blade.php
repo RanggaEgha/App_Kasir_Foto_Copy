@@ -183,6 +183,7 @@
             <th style="width:120px">Status</th>
             <th style="width:120px">Status Bayar</th>
             <th style="width:140px" class="text-end">Total</th>
+            <th style="width:220px">Ringkasan</th>
             <th style="width:320px">Aksi</th>
           </tr>
         </thead>
@@ -192,7 +193,12 @@
             $status = $t->status ?? 'posted';
             $paymentStatus = $t->payment_status ?? 'unpaid';
             $payClass = ['paid'=>'paid','partial'=>'partial','unpaid'=>'unpaid'][$paymentStatus] ?? 'unpaid';
-            $sisa = max(0, (int)$t->total_harga - (int)$t->dibayar);
+            // Hitung dibayar bersih berbasis riwayat pembayaran
+            $paidInSum = (int) ($t->payments?->where('direction','in')->sum('amount') ?? 0);
+            $refundSum = (int) ($t->payments?->where('direction','out')->sum('amount') ?? 0);
+            $netPaid   = max(0, $paidInSum - $refundSum);
+            // Sisa tagihan berdasarkan dibayar bersih
+            $sisa = max(0, (int)$t->total_harga - $netPaid);
           @endphp
           <tr>
             <td>{{ $transaksis->firstItem() + $index }}</td>
@@ -203,8 +209,34 @@
             </td>
             <td>
               <span class="badge b-pay {{ $payClass }}">{{ $payStatus($paymentStatus) }}</span>
+              @php $hasRefund = ($refundSum ?? 0) > 0; @endphp
+              @if($hasRefund)
+                <div class="mt-1">
+                  @if(($netPaid ?? 0) <= 0)
+                    <span class="badge text-bg-danger">Refund penuh</span>
+                  @else
+                    <span class="badge text-bg-warning">Refund sebagian</span>
+                  @endif
+                </div>
+              @endif
             </td>
-            <td class="text-end">Rp {{ number_format((int)$t->total_harga, 0, ',', '.') }}</td>
+            <td class="text-end">Rp. {{ number_format((int)$t->total_harga, 0, ',', '.') }}</td>
+            <td>
+              @php
+                $refundSum = (int) ($t->payments?->where('direction','out')->sum('amount') ?? 0);
+                $paidInSum = (int) ($t->payments?->where('direction','in')->sum('amount') ?? 0);
+                $netPaid   = max(0, $paidInSum - $refundSum);
+              @endphp
+              <div class="d-flex flex-column gap-1 small">
+                <span class="badge rounded-pill" style="background:#eef2ff; color:#1d4ed8; border:1px solid #c7d2fe; width:fit-content;">Dibayar Bersih: Rp. {{ number_format($netPaid,0,',','.') }}</span>
+                @if($refundSum > 0)
+                  <span class="badge rounded-pill" style="background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; width:fit-content;">Terrefund: -Rp. {{ number_format($refundSum,0,',','.') }}</span>
+                @endif
+                @if($sisa > 0)
+                  <span class="badge rounded-pill" style="background:#f1f5f9; color:#0f172a; border:1px solid #e2e8f0; width:fit-content;">Sisa: Rp. {{ number_format($sisa,0,',','.') }}</span>
+                @endif
+              </div>
+            </td>
             <td>
               <div class="action-bar">
                 {{-- DETAIL / PDF --}}
@@ -229,6 +261,18 @@
                           data-sisa="{{ $sisa }}"
                           data-kode="{{ $t->kode_transaksi }}">
                     Tambah Pembayaran
+                  </button>
+                @endif
+
+                {{-- REFUND (jika sudah ada pembayaran dan belum void) --}}
+                @if($status !== 'void' && $netPaid > 0)
+                  @php $maxRefund = (int) $t->dibayar; @endphp
+                  <button class="btn-soft warn btn-sm"
+                          data-coreui-toggle="modal" data-coreui-target="#refundModal"
+                          data-id="{{ $t->id }}"
+                          data-max="{{ $maxRefund }}"
+                          data-kode="{{ $t->kode_transaksi }}">
+                    Refund
                   </button>
                 @endif
 
@@ -259,7 +303,7 @@
   </div>
 
   <div class="card-footer">
-    {{ $transaksis->links() }}
+    {{ $transaksis->withQueryString()->onEachSide(1)->links('components.pagination.pill-clean') }}
   </div>
 </div>
 
@@ -315,7 +359,7 @@
           <div class="mb-2 small text-muted">TRX: <span id="payKode">-</span></div>
           <div class="mb-3">
             <label class="form-label">Nominal (Rp)</label>
-            <input type="number" min="1" class="form-control" name="amount" id="payAmount">
+            <input type="text" inputmode="numeric" class="form-control money-input" name="amount" id="payAmount" placeholder="0">
             <div class="form-text">Sisa tagihan: <span id="paySisa">Rp0</span></div>
           </div>
           <div class="mb-3">
@@ -343,8 +387,57 @@
         </div>
       </div>
     </form>
-  </div>
 </div>
+</div>
+
+{{-- REFUND MODAL --}}
+<div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" id="refundForm">
+      @csrf
+      <div class="modal-content" style="border-radius:16px">
+        <div class="modal-header" style="border-bottom:1px solid var(--border)">
+          <h5 class="modal-title" id="refundTitle">Refund (Pengembalian Dana)</h5>
+          <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2 small text-muted">TRX: <span id="refundKode">-</span></div>
+          <div class="mb-3">
+            <label class="form-label">Nominal (Rp)</label>
+            <input type="text" inputmode="numeric" class="form-control money-input" name="amount" id="refundAmount" placeholder="0">
+            <div class="form-text">Maksimal refund: <span id="refundMax">Rp0</span></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Metode</label>
+            @php $shiftOpen = $shiftOpen ?? false; @endphp
+            <select class="form-select" name="method">
+              <option value="cash" {{ $shiftOpen ? '' : 'disabled' }}>Cash</option>
+              <option value="transfer">Transfer</option>
+              <option value="qris">QRIS</option>
+            </select>
+          </div>
+          @if(!$shiftOpen)
+            <div class="alert alert-warning d-flex justify-content-between align-items-center gap-2 py-2">
+              <div>Shift belum dibuka. Metode <strong>Cash</strong> dinonaktifkan.</div>
+              <a href="{{ route('shift.index') }}" class="btn btn-soft primary btn-sm">Buka Shift</a>
+            </div>
+          @endif
+          <div class="mb-3">
+            <label class="form-label">Alasan Refund</label>
+            <input type="text" class="form-control" name="reason" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Referensi (opsional)</label>
+            <input type="text" class="form-control" name="reference" placeholder="No. transfer / catatan">
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid var(--border)">
+          <button class="btn btn-warning">Simpan Refund</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  </div>
 
 {{-- VOID MODAL --}}
 <div class="modal fade" id="voidModal" tabindex="-1" aria-labelledby="voidTitle" aria-hidden="true">
@@ -373,8 +466,25 @@
 {{-- === JS Modal Wiring === --}}
 <script>
 (function(){
-  const currencyID = v => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR'})
-                            .format(v).replace('IDR','Rp').trim();
+  const formatRibuan = (val) => {
+    const n = Math.max(0, parseInt((val||'').toString().replace(/\D+/g,'')) || 0);
+    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n);
+  };
+  const currencyID = (v) => 'Rp. ' + formatRibuan(v);
+  const normalizeDigits = (val) => ((val||'').toString().replace(/\D+/g,'') || '');
+  const attachMoneyInput = (inp) => {
+    if(!inp) return;
+    // format on input
+    inp.addEventListener('input', () => {
+      const raw = normalizeDigits(inp.value);
+      inp.value = formatRibuan(raw);
+    });
+    // ensure submit sends digits only
+    inp.form && inp.form.addEventListener('submit', () => {
+      const raw = normalizeDigits(inp.value);
+      inp.value = raw;
+    });
+  };
 
   document.getElementById('postModal')?.addEventListener('show.coreui.modal', e=>{
     const btn = e.relatedTarget;
@@ -392,7 +502,7 @@
     document.getElementById('payKode').textContent  = kode || '-';
     document.getElementById('paySisa').textContent  = currencyID(sisa);
     const inp = document.getElementById('payAmount');
-    if(inp){ inp.value = sisa || ''; inp.focus(); }
+    if(inp){ inp.value = formatRibuan(sisa); inp.focus(); }
     document.getElementById('payForm').action       = "{{ url('/pembayaran/pay') }}/"+id;
   });
 
@@ -403,6 +513,22 @@
     document.getElementById('voidKode').textContent = kode || '-';
     document.getElementById('voidForm').action      = "{{ url('/pembayaran/void') }}/"+id;
   });
+
+  document.getElementById('refundModal')?.addEventListener('show.coreui.modal', e=>{
+    const btn = e.relatedTarget;
+    const id  = btn?.dataset.id;
+    const kode= btn?.dataset.kode;
+    const max = Number(btn?.dataset.max || 0);
+    document.getElementById('refundKode').textContent = kode || '-';
+    document.getElementById('refundMax').textContent  = currencyID(max);
+    const inp = document.getElementById('refundAmount');
+    if (inp) { inp.value = formatRibuan(max); inp.focus(); }
+    document.getElementById('refundForm').action      = "{{ url('/pembayaran/refund') }}/"+id;
+  });
+
+  // activate money formatting
+  attachMoneyInput(document.getElementById('payAmount'));
+  attachMoneyInput(document.getElementById('refundAmount'));
 })();
 </script>
 @endsection

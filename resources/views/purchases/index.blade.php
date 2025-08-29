@@ -36,7 +36,7 @@
               {{ $po->items_count }} item
               @if($firstUnit) <span class="text-muted">({{ $firstUnit }})</span>@endif
             </td>
-            <td class="text-end">Rp {{ number_format($po->total, 0, ',', '.') }}</td>
+            <td class="text-end">Rp. {{ number_format($po->total, 0, ',', '.') }}</td>
             <td class="text-end">
               <a class="btn btn-sm btn-outline-primary" href="{{ route('purchases.show', $po) }}"><i class="bi bi-eye"></i></a>
               <a class="btn btn-sm btn-outline-secondary" href="{{ route('purchases.edit', $po) }}"><i class="bi bi-pencil"></i></a>
@@ -56,7 +56,7 @@
 
   @if(method_exists($orders, 'links'))
     <div class="card-footer">
-      {{ $orders->links() }}
+      {{ $orders->withQueryString()->onEachSide(1)->links('components.pagination.pill-clean') }}
     </div>
   @endif
 </div>

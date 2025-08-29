@@ -135,7 +135,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Harian</div>
-            <div class="value">@if(is_numeric($harian_total)) Rp {{ number_format($harian_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($harian_total)) Rp. {{ number_format($harian_total,0,',','.') }} @else — @endif</div>
             <div class="sub">@if(is_numeric($harian_count)) {{ (int)$harian_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -147,7 +147,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Mingguan</div>
-            <div class="value">@if(is_numeric($mingguan_total)) Rp {{ number_format($mingguan_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($mingguan_total)) Rp. {{ number_format($mingguan_total,0,',','.') }} @else — @endif</div>
             <div class="sub">@if(is_numeric($mingguan_count)) {{ (int)$mingguan_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -277,9 +277,9 @@
                         @elseif($type==='stock_low')
                           {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — sisa {{ (int)($d['stok'] ?? 0) }}
                         @elseif($type==='cash_diff')
-                          Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
+                          Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp. {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
                         @elseif($type==='below_cost')
-                          {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP (Rp {{ number_format((float)($d['hpp'] ?? 0),0,',','.') }})
+                          {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP (Rp. {{ number_format((float)($d['hpp'] ?? 0),0,',','.') }})
                         @elseif($type==='void_burst')
                           {{ (int)($d['count'] ?? 0) }} void/refund hari ini
                         @elseif($type==='daily_summary')
@@ -344,7 +344,7 @@
                         <td class="fw-700">{{ $i+1 }}</td>
                         <td class="text-truncate" style="max-width: 260px">{{ $row['label'] }}</td>
                         <td class="text-end">{{ number_format($row['qty'],0,',','.') }}</td>
-                        <td class="text-end">@if($row['rev']>0) Rp {{ number_format($row['rev'],0,',','.') }} @else — @endif</td>
+                        <td class="text-end">@if($row['rev']>0) Rp. {{ number_format($row['rev'],0,',','.') }} @else — @endif</td>
                       </tr>
                       @endforeach
                     </tbody>

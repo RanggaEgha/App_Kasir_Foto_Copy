@@ -16,6 +16,7 @@ class TransaksiItem extends Model
         'unit_id',          // NEW
         'tipe_item',        // barang | jasa
         'jumlah',
+        'refunded_qty',     // jumlah yang sudah direfund (kumulatif)
         'harga_satuan',
         // diskon per item
         'discount_type',    // percent | amount | null
@@ -24,6 +25,10 @@ class TransaksiItem extends Model
         'discount_reason',
         'subtotal',
     ]; // :contentReference[oaicite:6]{index=6}
+
+    protected $casts = [
+        'refunded_qty' => 'integer',
+    ];
 
     public function transaksi() { return $this->belongsTo(Transaksi::class); }
     public function barang()    { return $this->belongsTo(Barang::class);    }

@@ -483,6 +483,262 @@ class PembayaranController extends Controller
         }
     }
 
+    public function refund(Request $r, Transaksi $transaksi)
+    {
+        $data = $r->validate([
+            'amount'    => ['required','integer','min:1'],
+            'method'    => ['required','in:cash,transfer,qris'],
+            'reason'    => ['required','string','max:255'],
+            'reference' => ['nullable','string','max:100'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($transaksi, $data) {
+                if ($transaksi->status === 'void') {
+                    throw new \Exception('Transaksi sudah dibatalkan (void). Tidak bisa refund.');
+                }
+                if ($transaksi->status === 'draft') {
+                    throw new \Exception('Transaksi belum diposting. Tidak bisa refund.');
+                }
+
+                // Cek shift jika metode cash
+                $shiftId = $data['method'] === 'cash'
+                    ? KasirShift::openBy(auth()->id())->lockForUpdate()->value('id')
+                    : null;
+                if ($data['method'] === 'cash' && !$shiftId) {
+                    throw new \Exception('Shift kasir belum dibuka untuk refund CASH.');
+                }
+
+                // Batas maksimum refund: tidak boleh melebihi total yang sudah dibayar saat ini
+                $dibayarSaatIni = (int) $transaksi->dibayar;
+                if ((int)$data['amount'] > $dibayarSaatIni) {
+                    throw new \Exception('Nominal refund melebihi jumlah yang sudah diterima.');
+                }
+
+                // Catat pergerakan kas keluar (refund)
+                $payment = PaymentRecord::create([
+                    'transaksi_id' => $transaksi->id,
+                    'direction'    => 'out',
+                    'method'       => $data['method'],
+                    'amount'       => (int) $data['amount'],
+                    'reference'    => $data['reference'] ?? null,
+                    'note'         => $data['reason'],
+                    'paid_at'      => now(),
+                    'shift_id'     => $shiftId,
+                    'created_by'   => auth()->id(),
+                ]);
+
+                // Update header transaksi (kurangi dibayar dan evaluasi ulang status bayar)
+                $dibayarBaru = max(0, $dibayarSaatIni - (int) $data['amount']);
+                $transaksi->update([
+                    'metode_bayar'   => $data['method'],
+                    'dibayar'        => $dibayarBaru,
+                    'kembalian'      => max(0, $dibayarBaru - (int) $transaksi->total_harga),
+                    'payment_status' => $dibayarBaru >= (int) $transaksi->total_harga ? 'paid' : ($dibayarBaru > 0 ? 'partial' : 'unpaid'),
+                ]);
+
+                Audit::log(
+                    event: 'payment.refund',
+                    subject: $transaksi,
+                    description: "Refund (".$payment->method.") sebesar ".number_format($payment->amount,0,',','.'),
+                    properties: [
+                        'payment_id'     => (int) $payment->id,
+                        'method'         => $payment->method,
+                        'amount'         => (int) $payment->amount,
+                        'reference'      => $payment->reference,
+                        'reason'         => $data['reason'],
+                        'shift_id'       => $payment->shift_id,
+                        'transaksi_kode' => $transaksi->kode_transaksi,
+                    ]
+                );
+            });
+
+            return back()->with('success', 'Refund berhasil dicatat.');
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->withErrors($e->getMessage())->withInput();
+        }
+    }
+
+    public function refundItems(Request $r, Transaksi $transaksi)
+    {
+        $data = $r->validate([
+            'items'     => ['required','array'], // items[item_id] => qty
+            'method'    => ['required','in:cash,transfer,qris'],
+            'reason'    => ['required','string','max:255'],
+            'reference' => ['nullable','string','max:100'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($transaksi, $data) {
+                if ($transaksi->status === 'void') {
+                    throw new \Exception('Transaksi sudah dibatalkan (void). Tidak bisa refund.');
+                }
+                if ($transaksi->status === 'draft') {
+                    throw new \Exception('Transaksi belum diposting. Tidak bisa refund.');
+                }
+
+                $transaksi->loadMissing(['items.barang','items.unit']);
+
+                // Cek shift untuk cash
+                $shiftId = $data['method'] === 'cash'
+                    ? KasirShift::openBy(auth()->id())->lockForUpdate()->value('id')
+                    : null;
+                if ($data['method'] === 'cash' && !$shiftId) {
+                    throw new \Exception('Shift kasir belum dibuka untuk refund CASH.');
+                }
+
+                // Ambil daftar item terpilih (qty > 0)
+                $reqItems = [];
+                foreach (($data['items'] ?? []) as $itemId => $qty) {
+                    $q = (int) $qty;
+                    if ($q > 0) $reqItems[(int)$itemId] = $q;
+                }
+                if (empty($reqItems)) {
+                    throw new \Exception('Tidak ada item yang dipilih untuk refund.');
+                }
+
+                $byId = $transaksi->items->keyBy('id');
+                $netItemsSum = (int) $transaksi->items->sum('subtotal');
+                if ($netItemsSum <= 0) {
+                    throw new \Exception('Subtotal item tidak valid.');
+                }
+
+                $selectedNetSubtotal = 0;
+                $refundLines = [];
+
+                foreach ($reqItems as $id => $qtyRef) {
+                    $row = $byId[$id] ?? null;
+                    if (!$row) throw new \Exception('Item tidak ditemukan.');
+                    $qtyMax = (int) $row->jumlah;
+                    $already = (int) ($row->refunded_qty ?? 0);
+                    $avail = max(0, $qtyMax - $already);
+                    if ($qtyRef > $avail) {
+                        throw new \Exception('Qty refund melebihi sisa yang dapat direfund untuk salah satu item.');
+                    }
+
+                    $sub = (int) $row->subtotal;
+                    $part = (int) floor($sub * $qtyRef / max(1, (int)$row->jumlah));
+                    $selectedNetSubtotal += $part;
+
+                    $refundLines[] = [
+                        'id'       => (int) $row->id,
+                        'type'     => $row->tipe_item,
+                        'barang_id'=> $row->barang_id,
+                        'unit_id'  => $row->unit_id,
+                        'nama'     => $row->tipe_item === 'barang' ? ($row->barang->nama ?? 'Barang') : ($row->jasa->nama ?? 'Jasa'),
+                        'unit'     => $row->unit?->kode,
+                        'qty'      => (int) $qtyRef,
+                        'subtotal' => $part,
+                    ];
+                }
+
+                // Alokasikan diskon nota secara proporsional terhadap item yang direfund
+                $invDisc = (int) ($transaksi->discount_amount ?? 0);
+                $discShare = $invDisc > 0 ? (int) floor($invDisc * $selectedNetSubtotal / max(1, $netItemsSum)) : 0;
+                $refundAmount = max(0, $selectedNetSubtotal - $discShare);
+
+                // Batasi agar tidak melebihi dana yang sudah diterima
+                $dibayarSaatIni = (int) $transaksi->dibayar;
+                if ($refundAmount <= 0) {
+                    throw new \Exception('Nominal refund hasil perhitungan tidak valid.');
+                }
+                if ($refundAmount > $dibayarSaatIni) {
+                    throw new \Exception('Nominal refund melebihi jumlah yang sudah diterima.');
+                }
+
+                // Retur stok untuk item BARANG & update refunded_qty per item
+                foreach ($refundLines as $line) {
+                    if ($line['type'] === 'barang' && $line['barang_id'] && $line['unit_id'] && $line['qty'] > 0) {
+                        $pivot = BarangUnitPrice::where('barang_id', $line['barang_id'])
+                            ->where('unit_id',   $line['unit_id'])
+                            ->lockForUpdate()
+                            ->first();
+                        if ($pivot) {
+                            $old = (int) $pivot->stok;
+                            $pivot->increment('stok', (int) $line['qty']);
+                            $new = $old + (int) $line['qty'];
+
+                            $pivot->loadMissing('barang:id,nama','unit:id,kode');
+                            Audit::log(
+                                event: 'stock.incremented',
+                                subject: $pivot,
+                                description: "Retur stok {$pivot->barang?->nama} ({$pivot->unit?->kode}) karena refund transaksi {$transaksi->kode_transaksi}",
+                                properties: [
+                                    'barang_id'   => (int) $pivot->barang_id,
+                                    'barang_name' => $pivot->barang?->nama,
+                                    'unit_id'     => (int) $pivot->unit_id,
+                                    'unit_kode'   => $pivot->unit?->kode,
+                                    'qty'         => (int) $line['qty'],
+                                    'old_stok'    => $old,
+                                    'new_stok'    => $new,
+                                ]
+                            );
+                        }
+                    }
+                    // Update refunded_qty (untuk barang & jasa sama-sama di-track)
+                    if ($line['qty'] > 0) {
+                        TransaksiItem::whereKey($line['id'])->lockForUpdate()->increment('refunded_qty', (int)$line['qty']);
+                    }
+                }
+
+                // Catat pembayaran keluar (refund)
+                $payment = PaymentRecord::create([
+                    'transaksi_id' => $transaksi->id,
+                    'direction'    => 'out',
+                    'method'       => $data['method'],
+                    'amount'       => (int) $refundAmount,
+                    'reference'    => $data['reference'] ?? null,
+                    'note'         => $data['reason'],
+                    'paid_at'      => now(),
+                    'shift_id'     => $shiftId,
+                    'created_by'   => auth()->id(),
+                ]);
+
+                // Update transaksi (dibayar turun)
+                $dibayarBaru = max(0, $dibayarSaatIni - (int) $refundAmount);
+                $transaksi->update([
+                    'metode_bayar'   => $data['method'],
+                    'dibayar'        => $dibayarBaru,
+                    'kembalian'      => max(0, $dibayarBaru - (int) $transaksi->total_harga),
+                    'payment_status' => $dibayarBaru >= (int) $transaksi->total_harga ? 'paid' : ($dibayarBaru > 0 ? 'partial' : 'unpaid'),
+                ]);
+
+                Audit::log(
+                    event: 'payment.refund',
+                    subject: $transaksi,
+                    description: "Refund per-item (".$payment->method.") sebesar ".number_format($payment->amount,0,',','.'),
+                    properties: [
+                        'payment_id'     => (int) $payment->id,
+                        'method'         => $payment->method,
+                        'amount'         => (int) $payment->amount,
+                        'reference'      => $payment->reference,
+                        'reason'         => $data['reason'],
+                        'shift_id'       => $payment->shift_id,
+                        'transaksi_kode' => $transaksi->kode_transaksi,
+                        'items'          => array_map(function($ln){
+                            return [
+                                'id'       => (int) $ln['id'],
+                                'type'     => $ln['type'],
+                                'nama'     => $ln['nama'],
+                                'unit'     => $ln['unit'],
+                                'qty'      => (int) $ln['qty'],
+                                'subtotal' => (int) $ln['subtotal'],
+                            ];
+                        }, $refundLines),
+                        'selected_net_subtotal' => (int) $selectedNetSubtotal,
+                        'invoice_discount_share'=> (int) $discShare,
+                    ]
+                );
+            });
+
+            return back()->with('success', 'Refund per-item berhasil dicatat.');
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->withErrors($e->getMessage())->withInput();
+        }
+    }
+
     protected function generateKode(): string
     {
         // TRX + timestamp + 3 huruf acak → probabilitas tabrakan sangat kecil.

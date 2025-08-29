@@ -342,7 +342,7 @@
                 <div class="col-6">
                   <select class="form-select" name="discount_type" id="discType">
                     <option value="">— tidak ada —</option>
-                    <option value="amount">Rp (nominal)</option>
+                    <option value="amount">Rp. (nominal)</option>
                     <option value="percent">% (persen)</option>
                   </select>
                 </div>

@@ -38,7 +38,10 @@
             onclick="addUnitRow()">+ Tambah Unit</button>
 
     <div class="mt-4">
-      <a href="{{ route('barang.index') }}" class="btn btn-secondary">Kembali</a>
+      <a href="{{ route('barang.index') }}" class="btn btn-secondary">
+        <svg class="me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline><line x1="9" y1="12" x2="21" y2="12"></line></svg>
+        Kembali
+      </a>
       <button class="btn btn-primary">Simpan</button>
     </div>
   </form>

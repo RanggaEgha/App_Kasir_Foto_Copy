@@ -162,7 +162,10 @@
 
     {{-- ACTION --}}
     <div class="d-flex justify-content-end gap-2">
-      <a href="{{ route('transaksi.index') }}" class="btn btn-outline-secondary">← Kembali</a>
+      <a href="{{ route('transaksi.index') }}" class="btn btn-outline-secondary">
+        <svg class="me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline><line x1="9" y1="12" x2="21" y2="12"></line></svg>
+        Kembali
+      </a>
       <button class="btn btn-primary">Simpan Transaksi</button>
     </div>
   </form>

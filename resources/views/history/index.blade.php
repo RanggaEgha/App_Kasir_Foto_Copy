@@ -57,6 +57,20 @@
   .filter-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.6rem .6rem}
   .filter-wrap .form-select{border-radius:10px; font-size:.9rem}
 
+  /* Select pill (selaras gaya tombol/chips) */
+  .select-pill{ position:relative; display:inline-flex; align-items:center; }
+  .select-pill select{
+    -webkit-appearance:none; appearance:none;
+    padding:.48rem 34px .48rem 36px; height:38px;
+    border-radius:12px; border:1px solid var(--border);
+    background:#fff; box-shadow:0 1px 0 rgba(2,6,23,.04);
+    font-weight:700; letter-spacing:.2px; color:#0f172a; min-width:190px;
+  }
+  .select-pill select:hover{ border-color:#c7d2fe }
+  .select-pill select:focus{ outline:none; border-color:#c7d2fe; box-shadow:0 0 0 3px rgba(29,78,216,.18) }
+  .select-pill .ic{ position:absolute; left:10px; width:16px; height:16px; color:var(--brand); pointer-events:none }
+  .select-pill .chev{ position:absolute; right:10px; width:14px; height:14px; color:#64748b; pointer-events:none }
+
   .table-modern{--row:rgba(2,6,23,.03)}
   .table-modern thead th{
     position:sticky; top:0; z-index:1;
@@ -82,10 +96,15 @@
 
   /* Tombol aksi */
   .btn-soft{
+    display:inline-flex; align-items:center; gap:6px;
     border-radius:10px; border:1px solid var(--border); background:#fff; color:#0f172a;
     padding:.35rem .6rem; font-weight:600; font-size:.84rem;
     text-decoration:none;           /* hilangkan garis bawah */
   }
+  /* Ukuran ikon seragam untuk tombol pada halaman history */
+  .btn-soft svg{ width:16px; height:16px; margin-right:6px; flex:0 0 16px; }
+  .btn-soft.btn-sm svg{ width:14px; height:14px; margin-right:6px; flex:0 0 14px; }
+  .action-rotator .current .btn-soft svg{ width:14px; height:14px; }
   .btn-soft:hover{background:var(--hover); text-decoration:none;} /* tetap tanpa underline */
   .btn-soft.primary{border-color:#c7d2fe}
   .btn-soft.success{border-color:#bbf7d0}
@@ -190,24 +209,40 @@
     {{-- Filter --}}
     <form class="row g-2 mb-3 filter-wrap" method="get">
       <div class="col-12 col-md-auto">
-        <select name="status" class="form-select form-select-sm">
-          <option value="">— status —</option>
-          @foreach(['draft','posted','void'] as $s)
-            <option value="{{ $s }}" {{ request('status')===$s ? 'selected':'' }}>{{ $statusId($s) }}</option>
-          @endforeach
-        </select>
-      </div>
+  <label class="form-label small text-muted mb-1">Status</label>
+  <div class="select-pill">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+    <select name="status" class="select-soft">
+      <option value="">status</option>
+      @foreach(["draft","posted","void"] as $s)
+        <option value="{{ $s }}" {{ request("status")===$s ? "selected":"" }}>{{ $statusId($s) }}</option>
+      @endforeach
+    </select>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</div>
       <div class="col-12 col-md-auto">
-        <select name="payment" class="form-select form-select-sm">
-          <option value="">— status bayar —</option>
-          @foreach(['unpaid','partial','paid'] as $p)
-            <option value="{{ $p }}" {{ request('payment')===$p ? 'selected':'' }}>{{ $payStatus($p) }}</option>
-          @endforeach
-        </select>
-      </div>
+  <label class="form-label small text-muted mb-1">Status Bayar</label>
+  <div class="select-pill">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/><circle cx="7" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="17" cy="12" r="1"/></svg>
+    <select name="payment" class="select-soft">
+      <option value="">status bayar</option>
+      @foreach(["unpaid","partial","paid"] as $p)
+        <option value="{{ $p }}" {{ request("payment")===$p ? "selected":"" }}>{{ $payStatus($p) }}</option>
+      @endforeach
+    </select>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</div>
       <div class="col-12 col-md-auto">
-        <button class="btn btn-soft primary btn-sm">Terapkan</button>
-        <a href="{{ route('history.index') }}" class="btn btn-soft outline btn-sm">Reset</a>
+        <button class="btn btn-soft primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12 10 19 14 21 14 12 22 3"/></svg>
+          <span>Terapkan</span>
+        </button>
+        <a href="{{ route('history.index') }}" class="btn btn-soft outline btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          <span>Reset</span>
+        </a>
       </div>
     </form>
 
@@ -376,7 +411,10 @@
           </div>
         </div>
         <div class="modal-footer" style="border-top:1px solid var(--border)">
-          <button class="btn btn-success">Posting</button>
+          <button class="btn btn-success">
+            <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Posting
+          </button>
         </div>
       </div>
     </form>
@@ -412,7 +450,10 @@
           @if(!$shiftOpen)
             <div class="alert alert-warning d-flex justify-content-between align-items-center gap-2 py-2">
               <div>Shift belum dibuka. Metode <strong>Cash</strong> dinonaktifkan.</div>
-              <a href="{{ route('shift.index') }}" class="btn btn-soft primary btn-sm">Buka Shift</a>
+              <a href="{{ route('shift.index') }}" class="btn btn-soft primary btn-sm">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l-5-5 5-5"/><path d="M4 12h12"/><path d="M20 19V5"/></svg>
+                <span>Buka Shift</span>
+              </a>
             </div>
           @endif
           <div class="mb-3">
@@ -421,7 +462,10 @@
           </div>
         </div>
         <div class="modal-footer" style="border-top:1px solid var(--border)">
-          <button class="btn btn-primary">Simpan Pembayaran</button>
+          <button class="btn btn-primary">
+            <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v9a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Simpan Pembayaran
+          </button>
         </div>
       </div>
     </form>
@@ -470,7 +514,10 @@
           </div>
         </div>
         <div class="modal-footer" style="border-top:1px solid var(--border)">
-          <button class="btn btn-warning">Simpan Refund</button>
+          <button class="btn btn-warning">
+            <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            Simpan Refund
+          </button>
         </div>
       </div>
     </form>
@@ -494,7 +541,10 @@
           <div class="form-text text-danger">Stok barang akan dikembalikan.</div>
         </div>
         <div class="modal-footer" style="border-top:1px solid var(--border)">
-          <button class="btn btn-outline-danger">Batalkan</button>
+          <button class="btn btn-outline-danger">
+            <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            Batalkan
+          </button>
         </div>
       </div>
     </form>
@@ -636,3 +686,4 @@
 })();
 </script>
 @endsection
+

@@ -7,6 +7,7 @@
 {{-- Fonts --}}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.lordicon.com/bhenfmcm.js" defer></script>
 
 <style>
   :root{
@@ -20,7 +21,7 @@
     /* Palet */
     --indigo-600:#1d4ed8;   /* tombol Kembali/Cetak PDF */
     --indigo-800:#173ea6;
-    --amber-500:#f59e0b;
+    --amber-500:#f59e0b;    /* tombol Refund */
     --amber-700:#b45309;
 
     --ring-indigo: rgba(29,78,216,.28);
@@ -74,6 +75,35 @@
   .btn-soft--amber:hover{ background:var(--amber-700); border-color:var(--amber-700); box-shadow:0 6px 18px var(--ring-amber); }
   .btn-soft--amber:focus-visible{ box-shadow:0 0 0 3px var(--ring-amber) }
 
+  /* Ikon SVG pada tombol (selalu tampil) */
+  .btn-soft .ic{ width:16px; height:16px; margin-right:.5rem; flex:0 0 16px; }
+  /* Pastikan ikon garis (bukan terisi putih) meski tombol memaksa fill/stroke */
+  .btn-soft .ic, .btn-soft .ic *{ fill: none !important; stroke: currentColor !important; }
+
+  /* Icon pill (ikon kecil di lingkaran putih) */
+  .ic-pill{ display:inline-grid; place-items:center; width:22px; height:22px; border-radius:999px; background:#ffffff; margin-right:.45rem; }
+  .ic-pill svg{ width:14px; height:14px; }
+  /* Lordicon fallback toggle */
+  .ic-pill lord-icon{ display:none; }
+  .ic-pill .ic-fallback{ display:inline-block; }
+  body.lordicon-ready .ic-pill lord-icon{ display:inline-block; width:14px; height:14px; }
+  body.lordicon-ready .ic-pill .ic-fallback{ display:none; }
+
+  /* Netralisasi forced white untuk ikon di kapsul (tanpa override fill/stroke agar Lordicon tetap tampil) */
+  .btn-soft .ic-pill, .btn-soft .ic-pill *{
+    color: initial !important;
+    -webkit-text-fill-color: initial !important;
+    fill: initial !important;
+    stroke: initial !important;
+  }
+  /* Warna fallback SVG mengikuti warna tombol */
+  .btn-soft--indigo .ic-pill .ic-fallback{ stroke: var(--indigo-600) !important; }
+  .btn-soft--amber  .ic-pill .ic-fallback{ stroke: var(--amber-700) !important; }
+
+  /* Warna ikon di dalam pill mengikuti warna tombol */
+  .btn-soft--indigo .ic-pill svg{ color:var(--indigo-600) !important; stroke:var(--indigo-600) !important; fill:none !important; }
+  .btn-soft--amber  .ic-pill svg{ color:var(--amber-700)  !important; stroke:var(--amber-700)  !important; fill:none !important; }
+
   /* ===== Badges STATUS (atas) sesuai request sebelumnya ===== */
   /* Diposting */
   .badge.bg-success{
@@ -122,6 +152,19 @@
     font-weight:600; background:#f1f5f9; color:#0f172a; font-size:.78rem;
   }
 </style>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      if (window.customElements && customElements.get('lord-icon')) {
+        document.body.classList.add('lordicon-ready');
+      } else if (window.customElements && customElements.whenDefined) {
+        customElements.whenDefined('lord-icon').then(function(){
+          document.body.classList.add('lordicon-ready');
+        }).catch(function(){});
+      }
+    }catch(e){}
+  });
+</script>
 
 <div class="container-fluid px-3 px-sm-4">
 
@@ -138,7 +181,10 @@
         </div>
         <div class="d-none d-sm-block">
           {{-- Kembali (desktop) — #1d4ed8 --}}
-          <a href="{{ route('history.index') }}" class="btn-soft btn-soft--indigo">Kembali</a>
+          <a href="{{ route('history.index') }}" class="btn-soft btn-soft--indigo">
+            <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline><line x1="9" y1="12" x2="21" y2="12"></line></svg>
+            <span>Kembali</span>
+          </a>
         </div>
       </div>
     </div>
@@ -334,29 +380,37 @@
 
       {{-- ===== ACTION BUTTONS ===== --}}
       <div class="d-flex justify-content-end gap-2 mt-3 flex-wrap">
-        <a href="{{ route('history.pdf', $transaksi->id) }}" class="btn-soft btn-soft--indigo" target="_blank">Cetak PDF</a>
+        {{-- Cetak PDF (ikon: file/PDF) --}}
+        <a href="{{ route('history.pdf', $transaksi->id) }}" class="btn-soft btn-soft--indigo" target="_blank">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span>Cetak PDF</span>
+        </a>
 
         @if(($status ?? 'posted') !== 'void' && (int)($transaksi->dibayar ?? 0) > 0)
           @php $maxRefund = (int) ($transaksi->dibayar ?? 0); @endphp
 
+          {{-- Refund (ikon: rotate/undo) --}}
           <button
             class="btn-soft btn-soft--amber"
             data-coreui-toggle="modal" data-coreui-target="#refundModal"
             data-id="{{ $transaksi->id }}"
             data-kode="{{ $transaksi->kode_transaksi }}"
             data-max="{{ $maxRefund }}">
-            Refund
-          </button>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 2.1-9.36L1 10"/></svg><span>Refund</span>
+        </button>
 
+          {{-- Refund Per Item (ikon: daftar/nota dengan panah balik) --}}
           <button
             class="btn-soft btn-soft--amber"
             data-coreui-toggle="modal" data-coreui-target="#refundItemsModal">
-            Refund Per Item
-          </button>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="11" x2="14" y2="11"/><line x1="6" y1="15" x2="11" y2="15"/></svg><span>Refund Per Item</span>
+        </button>
         @endif
 
         {{-- Kembali (mobile) — #1d4ed8 --}}
-        <a href="{{ route('history.index') }}" class="btn-soft btn-soft--indigo d-sm-none">Kembali</a>
+        <a href="{{ route('history.index') }}" class="btn-soft btn-soft--indigo d-sm-none">
+          <svg class="me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline><line x1="9" y1="12" x2="21" y2="12"></line></svg>
+          <span>Kembali</span>
+        </a>
       </div>
     </div>
   </div>
@@ -536,3 +590,8 @@
 })();
 </script>
 @endsection
+
+
+
+
+

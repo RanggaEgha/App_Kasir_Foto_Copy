@@ -28,14 +28,14 @@ class DailySalesSummaryNotification extends Notification
         $msg = (new MailMessage)
           ->subject('🧾 Daily Sales Summary')
           ->line('Tanggal: '.$s['date'])
-          ->line('Omzet (masuk): Rp. '.number_format($s['revenue_in'],0,',','.'))
+          ->line('Omzet (masuk): Rp'.number_format($s['revenue_in'],0,',','.'))
           ->line('Transaksi unik : '.$s['transaksi_count'])
-          ->line('Avg basket     : Rp. '.number_format($s['avg_basket'],0,',','.'));
+          ->line('Avg basket     : Rp'.number_format($s['avg_basket'],0,',','.'));
 
         if (!empty($s['top_items'])) {
             $msg->line('Top Items (5):');
             foreach ($s['top_items'] as $row) {
-                $msg->line('- '.$row['label'].' — qty '.$row['qty'].' (Rp. '.number_format($row['rev'],0,',','.').')');
+                $msg->line('- '.$row['label'].' — qty '.$row['qty'].' (Rp'.number_format($row['rev'],0,',','.').')');
             }
         }
         return $msg;

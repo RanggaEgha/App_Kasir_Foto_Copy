@@ -293,7 +293,7 @@
 
       formatDisplay(v){
         if(!v) return '';
-        return 'Rp. ' + v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return 'Rp' + v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       }
     }
   }

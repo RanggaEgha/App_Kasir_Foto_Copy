@@ -135,7 +135,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Harian</div>
-            <div class="value">@if(is_numeric($harian_total)) Rp. {{ number_format($harian_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($harian_total)) @rupiah($harian_total) @else — @endif</div>
             <div class="sub">@if(is_numeric($harian_count)) {{ (int)$harian_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -147,7 +147,7 @@
           </div>
           <div class="neo-kpi__body">
             <div class="label">Total Mingguan</div>
-            <div class="value">@if(is_numeric($mingguan_total)) Rp. {{ number_format($mingguan_total,0,',','.') }} @else — @endif</div>
+            <div class="value">@if(is_numeric($mingguan_total)) @rupiah($mingguan_total) @else — @endif</div>
             <div class="sub">@if(is_numeric($mingguan_count)) {{ (int)$mingguan_count }} transaksi @else &nbsp; @endif</div>
           </div>
         </div>
@@ -277,9 +277,9 @@
                         @elseif($type==='stock_low')
                           {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — sisa {{ (int)($d['stok'] ?? 0) }}
                         @elseif($type==='cash_diff')
-                          Shift #{{ $d['shift_id'] ?? '—' }} — selisih Rp. {{ number_format((int)($d['difference'] ?? 0),0,',','.') }}
+                          Shift #{{ $d['shift_id'] ?? '—' }} — selisih @rupiah((int)($d['difference'] ?? 0))
                         @elseif($type==='below_cost')
-                          {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP (Rp. {{ number_format((float)($d['hpp'] ?? 0),0,',','.') }})
+                          {{ $d['barang'] ?? '—' }} ({{ $d['unit'] ?? '—' }}) — Harga < HPP (@rupiah((float)($d['hpp'] ?? 0)))
                         @elseif($type==='void_burst')
                           {{ (int)($d['count'] ?? 0) }} void/refund hari ini
                         @elseif($type==='daily_summary')
@@ -344,7 +344,7 @@
                         <td class="fw-700">{{ $i+1 }}</td>
                         <td class="text-truncate" style="max-width: 260px">{{ $row['label'] }}</td>
                         <td class="text-end">{{ number_format($row['qty'],0,',','.') }}</td>
-                        <td class="text-end">@if($row['rev']>0) Rp. {{ number_format($row['rev'],0,',','.') }} @else — @endif</td>
+                        <td class="text-end">@if($row['rev']>0) @rupiah($row['rev']) @else — @endif</td>
                       </tr>
                       @endforeach
                     </tbody>
@@ -459,8 +459,20 @@
     box-shadow: var(--ring); flex:0 0 48px;
   }
   .neo-kpi__body .label{ font-size:.8rem; color:var(--muted); margin:0;}
-  .neo-kpi__body .value{ font-weight:800; font-size:1.2rem; letter-spacing:.2px;}
+  .neo-kpi__body .value{
+    font-weight:800;
+    font-size:1.2rem; /* fallback */
+    font-size:clamp(1rem, 0.95rem + 0.6vw, 1.2rem);
+    letter-spacing:.2px;
+    white-space: nowrap;
+  }
   .neo-kpi__body .sub{ font-size:.76rem; color:var(--muted); }
+
+  /* Shrink KPI value when card gets narrow (container queries) */
+  .neo-card.neo-kpi{ container-type: inline-size; }
+  @container (max-width: 340px){ .neo-kpi__body .value{ font-size:1.05rem; } }
+  @container (max-width: 300px){ .neo-kpi__body .value{ font-size:.98rem; } }
+  @container (max-width: 260px){ .neo-kpi__body .value{ font-size:.92rem; } }
 
   .btn-neo{
     display:inline-flex; align-items:center; gap:.5rem;

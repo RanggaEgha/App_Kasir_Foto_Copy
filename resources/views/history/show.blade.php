@@ -2,14 +2,41 @@
 @section('title','Detail Transaksi')
 
 @section('content')
-<div class="container-fluid px-4">
-  <h1 class="mt-4">Detail Transaksi</h1>
+@include('partials.neo-theme')
+<style>
+  /* Selaraskan tema dengan History Index */
+  .history-card{ margin:16px 0 36px; border:1px solid rgba(2,6,23,.06); border-radius:16px; box-shadow:0 12px 28px rgba(29,78,216,.12); }
+  .history-card .card-header{
+    border-bottom:1px solid #e5e7eb;
+    background:linear-gradient(135deg,#f7f9ff,#eef2ff);
+    border-radius:16px 16px 0 0; padding:18px 18px 20px; margin-bottom:8px;
+  }
+  .history-card .card-body{ padding:16px; }
+  .history-card .table{ margin-bottom:0; }
+  .btn-soft{ border-radius:10px; border:1px solid #e5e7eb; background:#fff; color:#0f172a; padding:.35rem .6rem; font-weight:600; font-size:.86rem; text-decoration:none; }
+  .btn-soft:hover{ background:#f9fafb; text-decoration:none; }
+  .btn-soft.primary{ border-color:#c7d2fe }
+  .btn-soft.outline{ background:transparent }
+  .code{ font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:.92rem }
+</style>
+<div class="container-fluid px-3 px-sm-4">
 
   @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
   @endif
 
-  <div class="card">
+  <div class="card shadow-sm history-card">
+    <div class="card-header">
+      <div class="d-flex justify-content-between align-items-center gap-2">
+        <div>
+          <h5 class="mb-0">Detail Transaksi</h5>
+          <div class="small text-muted">Ringkasan transaksi & pembayaran</div>
+        </div>
+        <div class="d-none d-sm-block">
+          <a href="{{ route('history.index') }}" class="btn-soft outline">Kembali</a>
+        </div>
+      </div>
+    </div>
     <div class="card-body">
 
       @php
@@ -44,7 +71,7 @@
       {{-- ===== HEADER INFO ===== --}}
       <table class="table table-borderless w-auto mb-4">
         <tbody>
-          <tr><th>Kode Transaksi</th><td>{{ $transaksi->kode_transaksi }}</td></tr>
+          <tr><th>Kode Transaksi</th><td class="code">{{ $transaksi->kode_transaksi }}</td></tr>
           <tr><th>Tanggal</th>
               <td>{{ optional($transaksi->tanggal)->translatedFormat('d F Y • H:i') ?? optional($transaksi->created_at)->format('d M Y H:i') }} WIB</td></tr>
           @if(!empty($transaksi->metode_bayar))
@@ -60,10 +87,10 @@
             $netPaid  = max(0, $totalIn - $totalOut);
           @endphp
           @if($itemDisc>0)
-            <tr><th>Diskon Item</th><td>Rp{{ number_format($itemDisc,0,',','.') }}</td></tr>
+            <tr><th>Diskon Item</th><td>@rupiah($itemDisc)</td></tr>
           @endif
           @if((int)$transaksi->discount_amount > 0)
-            <tr><th>Diskon Nota</th><td>Rp{{ number_format((int)$transaksi->discount_amount,0,',','.') }}</td></tr>
+            <tr><th>Diskon Nota</th><td>@rupiah((int)$transaksi->discount_amount)</td></tr>
             @if(!empty($transaksi->discount_reason))
               <tr><th>Alasan Diskon</th><td>{{ $transaksi->discount_reason }}</td></tr>
             @endif
@@ -73,16 +100,16 @@
           @endif
           @if($totalIn>0)
             <tr><th>Total Pembayaran</th>
-                <td>Rp. {{ number_format($totalIn,0,',','.') }}</td></tr>
+                <td>@rupiah($totalIn)</td></tr>
           @endif
           <tr><th>Dibayar</th>
-              <td>Rp. {{ number_format((int)$transaksi->dibayar,0,',','.') }}</td></tr>
+              <td>@rupiah((int)$transaksi->dibayar)</td></tr>
           @if($totalOut>0)
             <tr><th>Total Refund</th>
-                <td class="text-danger">- Rp. {{ number_format($totalOut,0,',','.') }}</td></tr>
+                <td class="text-danger">- @rupiah($totalOut)</td></tr>
           @endif
           <tr><th>Kembalian</th>
-              <td>Rp. {{ number_format((int)$transaksi->kembalian,0,',','.') }}</td></tr>
+              <td>@rupiah((int)$transaksi->kembalian)</td></tr>
         </tbody>
       </table>
 
@@ -116,15 +143,15 @@
                     <div class="small text-muted mt-1">Terrefund: {{ $refunded }} • Sisa: {{ $remain }}</div>
                   @endif
                 </td>
-                <td>Rp. {{ number_format((int)$it->harga_satuan,0,',','.') }}</td>
-                <td>Rp. {{ number_format((int)$it->subtotal,0,',','.') }}</td>
+                <td>@rupiah((int)$it->harga_satuan)</td>
+                <td>@rupiah((int)$it->subtotal)</td>
               </tr>
             @endforeach
           </tbody>
           <tfoot>
             <tr>
               <th colspan="4" class="text-end">Total</th>
-              <th>Rp. {{ number_format((int)$transaksi->total_harga,0,',','.') }}</th>
+              <th>@rupiah((int)$transaksi->total_harga)</th>
             </tr>
           </tfoot>
         </table>
@@ -155,7 +182,7 @@
                 <td>{{ strtoupper($p->method) }}</td>
                 <td>{{ $p->reference ?? ($p->note ?? '-') }}</td>
                 <td class="text-end {{ $p->direction==='out'?'text-danger':'' }}">
-                  {{ $p->direction==='out' ? '-' : '' }}Rp. {{ number_format((int)$p->amount,0,',','.') }}
+                  {{ $p->direction==='out' ? '-' : '' }}@rupiah((int)$p->amount)
                 </td>
               </tr>
             @endforeach
@@ -163,17 +190,17 @@
           <tfoot>
             <tr>
               <th colspan="4" class="text-end">Total Pembayaran</th>
-              <th class="text-end">Rp. {{ number_format($totalIn,0,',','.') }}</th>
+              <th class="text-end">@rupiah($totalIn)</th>
             </tr>
             @if($totalOut>0)
             <tr>
               <th colspan="4" class="text-end">Total Refund</th>
-              <th class="text-end text-danger">- Rp. {{ number_format($totalOut,0,',','.') }}</th>
+              <th class="text-end text-danger">- @rupiah($totalOut)</th>
             </tr>
             @endif
             <tr>
               <th colspan="4" class="text-end">Dibayar Bersih</th>
-              <th class="text-end">Rp. {{ number_format($netPaid,0,',','.') }}</th>
+              <th class="text-end">@rupiah($netPaid)</th>
             </tr>
           </tfoot>
         </table>
@@ -182,8 +209,7 @@
 
       {{-- ===== ACTION BUTTONS ===== --}}
       <div class="d-flex justify-content-end gap-2 mt-3">
-        <a href="{{ route('history.pdf', $transaksi->id) }}"
-           class="btn btn-outline-primary" target="_blank">Cetak&nbsp;PDF</a>
+        <a href="{{ route('history.pdf', $transaksi->id) }}" class="btn-soft primary" target="_blank">Cetak PDF</a>
         @if(($status ?? 'posted') !== 'void' && (int)($transaksi->dibayar ?? 0) > 0)
           @php $maxRefund = (int) ($transaksi->dibayar ?? 0); @endphp
           <button class="btn btn-warning"
@@ -198,7 +224,7 @@
             Refund Per Item
           </button>
         @endif
-        <a href="{{ route('history.index') }}" class="btn btn-secondary">← Kembali</a>
+        <a href="{{ route('history.index') }}" class="btn btn-secondary d-sm-none">Kembali</a>
       </div>
 
     </div>
@@ -302,7 +328,7 @@
                     <td class="text-center">
                       <input type="number" min="0" max="{{ $remain }}" value="0" name="items[{{ $it->id }}]" class="form-control form-control-sm" style="max-width:90px; display:inline-block" {{ $remain<=0 ? 'disabled' : '' }}>
                     </td>
-                    <td class="text-end">Rp. {{ number_format((int)$it->subtotal,0,',','.') }}</td>
+                    <td class="text-end">@rupiah((int)$it->subtotal)</td>
                   </tr>
                 @endforeach
               </tbody>
@@ -346,7 +372,7 @@
     const n = Math.max(0, parseInt((val||'').toString().replace(/\D+/g,'')) || 0);
     return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n);
   };
-  const currencyID = (v) => 'Rp. ' + formatRibuan(v);
+  const currencyID = (v) => 'Rp' + formatRibuan(v);
   const normalizeDigits = (val) => ((val||'').toString().replace(/\D+/g,'') || '');
   document.getElementById('refundModal')?.addEventListener('show.coreui.modal', e=>{
     const btn = e.relatedTarget;

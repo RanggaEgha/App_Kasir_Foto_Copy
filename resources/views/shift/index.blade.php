@@ -21,16 +21,16 @@
                 <div>
                   <div><strong>Status:</strong> <span class="badge bg-primary">Open</span></div>
                   <div><strong>Dibuka:</strong> {{ $myOpen->opened_at?->format('d/m/Y H:i') }}</div>
-                  <div><strong>Kas Awal:</strong> Rp. {{ number_format($myOpen->opening_cash,0,',','.') }}</div>
+                  <div><strong>Kas Awal:</strong> @rupiah($myOpen->opening_cash)</div>
                   @php
                     $opsOpen = \App\Models\CashMovement::where('shift_id',$myOpen->id)
                       ->selectRaw("SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
                       ->first();
                   @endphp
                   <div><strong>Kas Ops:</strong>
-                    <span class="text-success">+{{ number_format((int)($opsOpen->masuk ?? 0),0,',','.') }}</span>
+                    <span class="text-success">+@rupiah((int)($opsOpen->masuk ?? 0))</span>
                     <span class="text-muted">/</span>
-                    <span class="text-danger">-{{ number_format((int)($opsOpen->keluar ?? 0),0,',','.') }}</span>
+                    <span class="text-danger">-@rupiah((int)($opsOpen->keluar ?? 0))</span>
                   </div>
                   @if($myOpen->notes)
                     <div><strong>Catatan:</strong> {{ $myOpen->notes }}</div>
@@ -89,7 +89,7 @@
                     @php $noms=[100000,50000,20000,10000,5000,2000,1000,500,200,100]; @endphp
                     @foreach($noms as $n)
                       <div class="col-6 col-md-3 col-lg-2">
-                        <label class="form-label small">Rp. {{ number_format($n,0,',','.') }}</label>
+                        <label class="form-label small">Rp{{ number_format($n,0,',','.') }}</label>
                         <input type="number" name="denom[{{ $n }}]" class="form-control" min="0" value="0">
                       </div>
                     @endforeach
@@ -158,7 +158,7 @@
                     <tr>
                       <td>{{ $m->paid_at?->format('Y-m-d H:i') }}</td>
                       <td><span class="badge {{ $m->direction==='in'?'text-bg-success':'text-bg-danger' }}">{{ strtoupper($m->direction) }}</span></td>
-                      <td>Rp. {{ number_format($m->amount,0,',','.') }}</td>
+                      <td>@rupiah($m->amount)</td>
                       <td>{{ $m->reference }}</td>
                       <td>{{ $m->note }}</td>
                     </tr>
@@ -191,10 +191,10 @@
                 <td>{{ $recent->firstItem() + $idx }}</td>
                 <td>{{ $s->user?->name ?? '—' }}</td>
                 <td>{{ $s->opened_at?->format('d/m/Y H:i') }}</td>
-                <td>Rp. {{ number_format($s->opening_cash,0,',','.') }}</td>
+                <td>@rupiah($s->opening_cash)</td>
                 <td>{{ $s->closed_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                <td>{{ $s->closing_cash !== null ? 'Rp. '.number_format($s->closing_cash,0,',','.') : '—' }}</td>
-                <td>Rp. {{ number_format($s->expected_cash,0,',','.') }}</td>
+                <td>@if(!is_null($s->closing_cash)) @rupiah($s->closing_cash) @else — @endif</td>
+                <td>@rupiah($s->expected_cash)</td>
                 @php
                   $ops = \App\Models\CashMovement::where('shift_id',$s->id)
                     ->selectRaw("SUM(CASE WHEN direction='in' THEN amount ELSE 0 END) as masuk, SUM(CASE WHEN direction='out' THEN amount ELSE 0 END) as keluar")
@@ -202,10 +202,10 @@
                   $in  = (int)($ops->masuk ?? 0); $out = (int)($ops->keluar ?? 0);
                 @endphp
                 <td>
-                  <span class="text-success">+{{ number_format($in,0,',','.') }}</span>
+                  <span class="text-success">+@rupiah($in)</span>
                   @if($out>0)
                     <span class="text-muted"> / </span>
-                    <span class="text-danger">-{{ number_format($out,0,',','.') }}</span>
+                    <span class="text-danger">-@rupiah($out)</span>
                   @endif
                 </td>
                 @php
@@ -213,7 +213,7 @@
                   $cls  = $diff > 0 ? 'text-success' : ($diff < 0 ? 'text-danger' : 'text-secondary');
                 @endphp
                 <td class="{{ $cls }}">
-                  {{ ($diff>0?'+':'') . number_format($diff,0,',','.') }}
+                  @if($diff>0)+@elseif($diff<0)-@endif@rupiah(abs($diff))
                 </td>
                 <td>
                   <span class="badge {{ $s->status==='open' ? 'bg-primary' : 'bg-secondary' }}">

@@ -2,7 +2,7 @@
 @section('title', 'Struk '.$transaksi->kode_transaksi)
 
 @php
-  $rp = fn($v) => 'Rp. '.number_format((int)$v,0,',','.');
+  $rp = fn($v) => 'Rp'.number_format((int)$v,0,',','.');
 
   // angka dasar
   $subTotal = (int)($transaksi->total_harga ?? 0);

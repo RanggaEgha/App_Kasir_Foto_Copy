@@ -39,7 +39,7 @@ class HistoryTransaksiController extends Controller
         $transaksis = $q
             ->with(['payments:id,transaksi_id,direction,amount'])
             ->orderByDesc('id')
-            ->paginate(20)
+            ->paginate(10)
             ->withQueryString();
 
         // Hitung ringkasan badge

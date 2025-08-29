@@ -342,7 +342,7 @@
                 <div class="col-6">
                   <select class="form-select" name="discount_type" id="discType">
                     <option value="">— tidak ada —</option>
-                    <option value="amount">Rp. (nominal)</option>
+                    <option value="amount">Rp (nominal)</option>
                     <option value="percent">% (persen)</option>
                   </select>
                 </div>
@@ -420,7 +420,7 @@ let pickedUnit   = null;
 let pickedJasa   = null;
 
 /* helpers */
-const rupiah   = n => 'Rp'+(Number(n)||0).toLocaleString('id-ID');
+const rupiah   = n => 'Rp' + (Number(n)||0).toLocaleString('id-ID');
 const idFormat = n => (Number(n)||0).toLocaleString('id-ID');
 const clean    = s => +(String(s||'').replace(/[^0-9]/g,''))||0;
 const $id      = id => document.getElementById(id);

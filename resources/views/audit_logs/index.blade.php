@@ -5,7 +5,7 @@
 @php
   /* ================= Helpers (CLOSURES, bukan function global) ================= */
   $nf      = fn($v) => is_numeric($v) ? number_format($v, 0, ',', '.') : (is_bool($v) ? ($v?'true':'false') : ($v===null?'':(string)$v));
-  $rupiah  = fn($v) => (is_numeric($v) || (is_string($v) && preg_match('~^\d~',$v))) ? 'Rp. '.$nf((float)$v) : '';
+  $rupiah  = fn($v) => (is_numeric($v) || (is_string($v) && preg_match('~^\d~',$v))) ? 'Rp'.$nf((float)$v) : '';
   $toFloat = function($v){
     if ($v===null || $v==='') return null;
     if (is_numeric($v)) return (float)$v;

@@ -1,5 +1,5 @@
 @php
-  $fmtRp = fn($n) => is_numeric($n) ? ('Rp. '.number_format((float)$n,0,',','.')) : '—';
+  $fmtRp = fn($n) => is_numeric($n) ? ('Rp'.number_format((float)$n,0,',','.')) : '—';
 
   // Perbandingan periode (untuk card "Sekarang vs Periode Lalu")
   $adv    = $adv ?? [];
@@ -284,15 +284,15 @@ document.addEventListener('DOMContentLoaded', function(){
         plugins: {
           legend: { labels: { color: 'rgba(2,6,23,.8)' } },
           tooltip: { backgroundColor: 'rgba(24,24,27,.92)', titleColor:'#fff', bodyColor:'#fff',
-            callbacks: { label: (c)=> `${c.dataset.label}: Rp. ${rupiah(c.parsed.y ?? 0)}` } },
+            callbacks: { label: (c)=> `${c.dataset.label}: Rp${rupiah(c.parsed.y ?? 0)}` } },
           datalabels: {
             color: '#7A1029', backgroundColor: 'rgba(255,223,185,.85)', borderRadius: 6, padding: {top:2,bottom:2,left:6,right:6},
-            anchor:'end', align:'end', offset:6, formatter:(v)=> v ? 'Rp. '+rupiah(v) : ''
+            anchor:'end', align:'end', offset:6, formatter:(v)=> v ? 'Rp'+rupiah(v) : ''
           }
         },
         scales: {
           x: { grid: { color: 'rgba(164,25,61,.12)', borderDash:[3,6] }, ticks: { color:'rgba(2,6,23,.7)'} },
-          y: { beginAtZero:true, grid:{ color:'rgba(2,6,23,.08)'}, ticks:{ color:'rgba(2,6,23,.7)', callback:(v)=> 'Rp. '+rupiah(v)} }
+          y: { beginAtZero:true, grid:{ color:'rgba(2,6,23,.08)'}, ticks:{ color:'rgba(2,6,23,.7)', callback:(v)=> 'Rp'+rupiah(v)} }
         }
       }
     });
@@ -348,15 +348,15 @@ document.addEventListener('DOMContentLoaded', function(){
         plugins: {
           legend: { display: false },
           tooltip: { backgroundColor:'rgba(24,24,27,.92)', titleColor:'#fff', bodyColor:'#fff',
-            callbacks: { label: (c)=> 'Rp. '+rupiah(c.parsed.y ?? 0) } },
+            callbacks: { label: (c)=> 'Rp'+rupiah(c.parsed.y ?? 0) } },
           datalabels: {
             color:'#7A1029', backgroundColor:'rgba(255,223,185,.85)', borderRadius:6, padding:{top:2,bottom:2,left:6,right:6},
-            anchor:'end', align:'end', offset:6, formatter:(v)=> v ? 'Rp. '+rupiah(v) : ''
+            anchor:'end', align:'end', offset:6, formatter:(v)=> v ? 'Rp'+rupiah(v) : ''
           }
         },
         scales: {
           x: { grid:{ color:'rgba(164,25,61,.12)', borderDash:[3,6] }, ticks:{ color:'rgba(2,6,23,.7)' } },
-          y: { beginAtZero:true, grid:{ color:'rgba(2,6,23,.08)' }, ticks:{ color:'rgba(2,6,23,.7)', callback:(v)=> 'Rp. '+rupiah(v) } }
+          y: { beginAtZero:true, grid:{ color:'rgba(2,6,23,.08)' }, ticks:{ color:'rgba(2,6,23,.7)', callback:(v)=> 'Rp'+rupiah(v) } }
         }
       }
     });

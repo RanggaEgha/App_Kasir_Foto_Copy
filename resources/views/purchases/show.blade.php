@@ -49,29 +49,29 @@
                   <td>{{ $it->barang->nama ?? '-' }}</td>
                   <td>{{ $it->unit->kode ?? '-' }}</td>
                   <td class="text-end">{{ number_format($it->qty,0,',','.') }}</td>
-                  <td class="text-end">Rp. {{ number_format($it->unit_price,0,',','.') }}</td>
-                  <td class="text-end">Rp. {{ number_format($it->subtotal,0,',','.') }}</td>
+                  <td class="text-end">@rupiah($it->unit_price)</td>
+                  <td class="text-end">@rupiah($it->subtotal)</td>
                 </tr>
               @endforeach
             </tbody>
             <tfoot>
               <tr>
                 <th colspan="5" class="text-end">Subtotal</th>
-                <th class="text-end">Rp. {{ number_format($po->subtotal,0,',','.') }}</th>
+                <th class="text-end">@rupiah($po->subtotal)</th>
               </tr>
               <tr>
                 <th colspan="5" class="text-end">Diskon</th>
-                <th class="text-end">- Rp. {{ number_format($po->discount,0,',','.') }}</th>
+                <th class="text-end">- @rupiah($po->discount)</th>
               </tr>
               <tr>
                 <th colspan="5" class="text-end">
                   PPN ({{ rtrim(rtrim(number_format($po->tax_percent,2,',','.'),'0'),',') }}%)
                 </th>
-                <th class="text-end">Rp. {{ number_format($po->tax_amount,0,',','.') }}</th>
+                <th class="text-end">@rupiah($po->tax_amount)</th>
               </tr>
               <tr>
                 <th colspan="5" class="text-end">Total</th>
-                <th class="text-end">Rp. {{ number_format($po->grand_total,0,',','.') }}</th>
+                <th class="text-end">@rupiah($po->grand_total)</th>
               </tr>
             </tfoot>
           </table>

@@ -5,7 +5,7 @@
 @php
   // formatter angka & rupiah
   $nf     = fn($v) => is_numeric($v) ? number_format($v, 0, ',', '.') : (is_bool($v) ? ($v?'true':'false') : ($v===null?'':(string)$v));
-  $rupiah = fn($v) => is_numeric($v) ? 'Rp. '.$nf($v) : '';
+  $rupiah = fn($v) => is_numeric($v) ? 'Rp'.$nf($v) : '';
 
   // parse angka longgar (menerima "1.234,56" / "1234.56")
   $toFloat = function($v){

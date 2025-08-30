@@ -30,11 +30,22 @@ class ShiftDifferenceNotification extends Notification
     public function toMail($n): MailMessage {
         $s = $this->shift;
         $nama = $s->user?->name ?? '—';
+        $subject = 'Selisih kas saat tutup shift';
         return (new MailMessage)
-            ->subject('Selisih kas saat tutup shift')
-            ->line("Shift #{$s->id} oleh {$nama}")
-            ->line('Kas Ekspektasi: Rp'.number_format((int)$s->expected_cash,0,',','.'))
-            ->line('Kas Akhir: Rp'.number_format((int)$s->closing_cash,0,',','.'))
-            ->line('Selisih: Rp'.number_format((int)$s->difference,0,',','.'));
+            ->subject($subject)
+            ->view('emails.notification', [
+                'subject'       => $subject,
+                'title'         => 'Selisih kas saat tutup shift',
+                'intro'         => 'Terjadi selisih kas pada saat penutupan shift.',
+                'details_title' => 'Detail Shift',
+                'details'       => [
+                    ['label'=>'Shift',          'value'=> '#'.$s->id],
+                    ['label'=>'Kasir',          'value'=> e($nama)],
+                    ['label'=>'Kas Ekspektasi', 'value'=> 'Rp'.number_format((int)$s->expected_cash,0,',','.')],
+                    ['label'=>'Kas Akhir',      'value'=> 'Rp'.number_format((int)$s->closing_cash,0,',','.')],
+                    ['label'=>'Selisih',        'value'=> 'Rp'.number_format((int)$s->difference,0,',','.')],
+                ],
+                'accent'        => '#ef4444',
+            ]);
     }
 }

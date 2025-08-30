@@ -93,6 +93,7 @@
   .b-pay.unpaid{background:#e5e7eb;color:#334155}
   .b-pay.partial{background:#fef3c7;color:#92400e}
   .b-pay.paid{background:#dcfce7;color:#166534}
+  .b-pay.free{background:#e0f2fe;color:#075985}
 
   /* Tombol aksi */
   .btn-soft{
@@ -177,6 +178,7 @@
         'paid'    => 'Lunas',
         'partial' => 'Sebagian (parsial)',
         'unpaid'  => 'Belum dibayar',
+        'free'    => 'Gratis',
         default   => ucfirst((string)$s),
       };
     @endphp
@@ -264,7 +266,7 @@
           @php
             $status = $t->status ?? 'posted';
             $paymentStatus = $t->payment_status ?? 'unpaid';
-            $payClass = ['paid'=>'paid','partial'=>'partial','unpaid'=>'unpaid'][$paymentStatus] ?? 'unpaid';
+            $payClass = ['paid'=>'paid','partial'=>'partial','unpaid'=>'unpaid','free'=>'free'][$paymentStatus] ?? 'unpaid';
             $paidInSum = (int) ($t->payments?->where('direction','in')->sum('amount') ?? 0);
             $refundSum = (int) ($t->payments?->where('direction','out')->sum('amount') ?? 0);
             $netPaid   = max(0, $paidInSum - $refundSum);
@@ -684,4 +686,3 @@
 })();
 </script>
 @endsection
-

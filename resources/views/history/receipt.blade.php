@@ -34,6 +34,7 @@
   // metode bayar: ambil dari payment terakhir, fallback ke transaksi.metode_bayar
   $pay = $transaksi->payments->last();
   $method = strtoupper($pay->method ?? $transaksi->metode_bayar ?? '-');
+  if (($transaksi->payment_status ?? '') === 'free') { $method = 'GRATIS'; }
   $reference = $pay->reference ?? null;
 
   // info kasir/shift
@@ -135,14 +136,25 @@
   <div class="hr"></div>
 
   {{-- Pembayaran --}}
-  <div class="row mono">
-    <div style="text-transform:uppercase">{{ $method }}{!! $reference ? ' — '.$reference : '' !!}</div>
-    <div style="font-weight:700">{{ $rp($transaksi->dibayar) }}</div>
-  </div>
-  <div class="row mono" style="margin-top:2px">
-    <div>Kembalian</div>
-    <div>{{ $rp($transaksi->kembalian) }}</div>
-  </div>
+  @if(($transaksi->payment_status ?? '') === 'free')
+    <div class="row mono">
+      <div style="text-transform:uppercase">{{ $method }}</div>
+      <div style="font-weight:700">{{ $rp(0) }}</div>
+    </div>
+    <div class="row mono" style="margin-top:2px">
+      <div>Kembalian</div>
+      <div>{{ $rp(0) }}</div>
+    </div>
+  @else
+    <div class="row mono">
+      <div style="text-transform:uppercase">{{ $method }}{!! $reference ? ' — '.$reference : '' !!}</div>
+      <div style="font-weight:700">{{ $rp($transaksi->dibayar) }}</div>
+    </div>
+    <div class="row mono" style="margin-top:2px">
+      <div>Kembalian</div>
+      <div>{{ $rp($transaksi->kembalian) }}</div>
+    </div>
+  @endif
 
   <div class="hr"></div>
 

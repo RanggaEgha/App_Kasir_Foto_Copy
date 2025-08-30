@@ -21,14 +21,16 @@ class KasirShiftObserver
         $notif = new ShiftDifferenceNotification($s, $key);
 
         // Kirim ke admin aktif jika ada
-        if ($admin = User::where('role','admin')->where('is_active',1)->first()) {
+        $admin = User::where('role','admin')->where('is_active',1)->first();
+        if ($admin) {
             $admin->notify($notif);
         }
 
-        // Selalu coba kirim ke email konfigurasi, terlepas dari ada/tidaknya user admin
+        // Kirim ke email konfigurasi jika diset dan tidak sama dengan email admin (hindari dobel)
         if ($to = config('alerts.email_to')) {
-            \Notification::route('mail', $to)->notify($notif);
+            if (!$admin || strcasecmp(trim($to), trim((string)$admin->email)) !== 0) {
+                \Notification::route('mail', $to)->notify($notif);
+            }
         }
     }
 }
-

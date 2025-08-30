@@ -24,8 +24,19 @@ class HighVoidActivityNotification extends Notification
     }
 
     public function toMail($n): MailMessage {
+        $subject = '⚠️ Void/refund berlebih hari ini';
         return (new MailMessage)
-            ->subject('⚠️ Void/refund berlebih hari ini')
-            ->line("Total void/refund hari ini: {$this->count}");
+            ->subject($subject)
+            ->view('emails.notification', [
+                'subject'       => $subject,
+                'title'         => 'Void/refund berlebih',
+                'intro'         => 'Aktivitas void/refund hari ini melebihi ambang yang ditentukan.',
+                'details_title' => 'Ringkasan Hari Ini',
+                'details'       => [
+                    ['label'=>'Tanggal', 'value'=> e($this->dateKey)],
+                    ['label'=>'Total Void/Refund', 'value'=> (int)$this->count],
+                ],
+                'accent'        => '#f59e0b',
+            ]);
     }
 }

@@ -47,7 +47,9 @@ class SendDailySalesSummary extends Command
             $notif = new DailySalesSummaryNotification($summary);
             $admin->notify($notif);
             if ($to = config('alerts.email_to')) {
-                \Notification::route('mail',$to)->notify($notif);
+                if (strcasecmp(trim($to), trim((string)$admin->email)) !== 0) {
+                    \Notification::route('mail',$to)->notify($notif);
+                }
             }
         }
 

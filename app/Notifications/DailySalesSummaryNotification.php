@@ -25,19 +25,30 @@ class DailySalesSummaryNotification extends Notification
 
     public function toMail($n): MailMessage {
         $s = $this->summary;
-        $msg = (new MailMessage)
-          ->subject('🧾 Daily Sales Summary')
-          ->line('Tanggal: '.$s['date'])
-          ->line('Omzet (masuk): Rp'.number_format($s['revenue_in'],0,',','.'))
-          ->line('Transaksi unik : '.$s['transaksi_count'])
-          ->line('Avg basket     : Rp'.number_format($s['avg_basket'],0,',','.'));
-
+        $subject = '🧾 Ringkasan Penjualan Harian';
+        $details = [
+            ['label'=>'Tanggal',          'value'=> e($s['date'])],
+            ['label'=>'Omzet (masuk)',    'value'=> 'Rp'.number_format((int)$s['revenue_in'],0,',','.')],
+            ['label'=>'Transaksi unik',   'value'=> (int)$s['transaksi_count']],
+            ['label'=>'Avg basket',       'value'=> 'Rp'.number_format((int)$s['avg_basket'],0,',','.')],
+        ];
         if (!empty($s['top_items'])) {
-            $msg->line('Top Items (5):');
+            $list = '';
             foreach ($s['top_items'] as $row) {
-                $msg->line('- '.$row['label'].' — qty '.$row['qty'].' (Rp'.number_format($row['rev'],0,',','.').')');
+                $list .= '<div>- '.e($row['label']).' — qty '.(float)$row['qty'].' (Rp'.number_format((float)$row['rev'],0,',','.').')</div>';
             }
+            $details[] = ['label' => 'Top Items', 'value' => $list];
         }
-        return $msg;
+
+        return (new MailMessage)
+            ->subject($subject)
+            ->view('emails.notification', [
+                'subject'       => $subject,
+                'title'         => 'Ringkasan penjualan harian',
+                'intro'         => 'Berikut ringkasan performa penjualan hari ini.',
+                'details_title' => 'Detail Ringkas',
+                'details'       => $details,
+                'accent'        => '#22c55e',
+            ]);
     }
 }

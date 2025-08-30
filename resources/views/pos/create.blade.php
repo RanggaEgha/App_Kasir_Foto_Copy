@@ -20,6 +20,10 @@
   .table-cart thead{background:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)}
   .table-cart td,.table-cart th{vertical-align:middle}
   .cart-table-wrap{max-height:360px; overflow:auto}
+  /* Samakan scrollbar keranjang dengan grid barang/jasa */
+  .cart-table-wrap::-webkit-scrollbar{ width:8px; height:8px; }
+  .cart-table-wrap::-webkit-scrollbar-thumb{ background:#D9A4B3; border-radius:999px; border:3px solid transparent; background-clip:content-box; }
+  .cart-table-wrap::-webkit-scrollbar-track{ background:transparent; }
 
   /* Tabs & buttons */
   .nav-modern .nav-link{border:0;color:#475569}
@@ -39,6 +43,11 @@
   .qty-row .btn{width:36px;height:36px;padding:0}
   .qty-row .form-control{height:36px;font-weight:700;text-align:end;width:72px;min-width:72px;flex:0 0 72px}
 
+  /* Lebarkan input Harga & Diskon agar tidak terpotong */
+  .table-cart .price-input{min-width:130px;text-align:end}
+  .table-cart .discount-input{min-width:150px;text-align:end}
+  .is-invalid-field{border-color:#dc3545 !important; background:#fff5f5}
+
   /* Hilangkan spinner bawaan number */
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0; }
@@ -53,11 +62,20 @@
     height:46px;font-size:1rem;border-radius:12px;padding-left:44px;
     background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 14px center;background-size:18px
   }
+  .picker-clear{position:absolute; right:10px; top:36px; transform:translateY(-50%); border:1px solid var(--border); background:#fff; width:28px; height:28px; border-radius:999px; display:grid; place-items:center; color:#64748b}
+  .picker-clear:hover{background:var(--hover)}
   .picker-hint{font-size:.85rem;color:var(--muted);margin-top:4px}
   .picker-results{position:absolute;z-index:1050;left:0;right:0;top:50px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 12px 28px rgba(2,6,23,.18);max-height:320px;overflow:auto}
   .picker-item{padding:.6rem .9rem;display:flex;align-items:center;gap:.5rem;cursor:pointer}
   .picker-item .title{font-weight:600}
   .picker-item:hover,.picker-item.active{background:rgba(255,223,185,.25)}
+  /* Tile hasil pencarian */
+  .result-tile{display:flex;align-items:center;gap:.6rem;padding:.55rem .75rem;border-radius:10px;cursor:pointer}
+  .result-tile:hover,.result-tile.active{background:rgba(255,223,185,.25)}
+  .result-tile .ico{ width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:rgba(255,223,185,.55);color:#7A1029;flex:0 0 36px; overflow:hidden }
+  .result-tile .ico img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:8px }
+  .result-tile .name{font-weight:700}
+  .result-tile .meta{font-size:.82rem;color:#64748b}
   .picker-empty{padding:.7rem .9rem;color:var(--muted)}
   .selected-pill{display:inline-flex;align-items:center;gap:.45rem;background:var(--chip);color:var(--chip-ink);padding:.25rem .6rem;border-radius:999px;font-weight:700;border:1px solid var(--chip-border)}
 
@@ -190,6 +208,7 @@
                   <div class="picker-wrap mb-2">
                     <label class="form-label">Cari Barang</label>
                     <input id="barangSearch" type="text" class="form-control picker-input" placeholder="Ketik minimal 2 huruf…" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button type="button" id="barangClear" class="picker-clear d-none" aria-label="Bersihkan">&times;</button>
                     <div class="picker-hint">Gunakan ↑/↓ lalu Enter untuk memilih.</div>
                     <div id="barangResults" class="picker-results d-none"></div>
 
@@ -255,6 +274,7 @@
                   <div class="picker-wrap mb-2">
                     <label class="form-label">Cari Jasa</label>
                     <input id="jasaSearch" type="text" class="form-control picker-input" placeholder="Ketik minimal 2 huruf…" autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button type="button" id="jasaClear" class="picker-clear d-none" aria-label="Bersihkan">&times;</button>
                     <div class="picker-hint">Gunakan ↑/↓ lalu Enter untuk memilih.</div>
                     <div id="jasaResults" class="picker-results d-none"></div>
 
@@ -320,7 +340,7 @@
                 <div>
                   Shift kasir belum dibuka. Pembayaran <strong>Cash</strong> dinonaktifkan.
                 </div>
-                <a href="{{ route('shift.index') }}" class="btn btn-brand btn-sm pill">Buka Shift</a>
+                <a href="{{ route('shift.index') }}" class="btn btn-brand btn-sm">Buka Shift</a>
               </div>
             @endif
             <div class="mb-3">
@@ -341,7 +361,7 @@
               <div class="row g-2 align-items-center mb-2">
                 <div class="col-6">
                   <select class="form-select" name="discount_type" id="discType">
-                    <option value="">— tidak ada —</option>
+                    <option value="">tidak ada</option>
                     <option value="amount">Rp (nominal)</option>
                     <option value="percent">% (persen)</option>
                   </select>
@@ -380,7 +400,7 @@
 
           <div class="p-3 border-top d-grid gap-2">
             <button type="button" class="btn btn-soft pill" id="btnUangPas"><i class="bi bi-cash-stack me-1"></i> Uang Pas</button>
-            <button type="submit" class="btn btn-brand pill"><i class="bi bi-check2-circle me-1"></i> Simpan (F9)</button>
+            <button type="submit" id="btnSimpan" class="btn btn-brand pill"><i class="bi bi-check2-circle me-1"></i> Simpan (F9)</button>
           </div>
         </div>
       </div>
@@ -425,6 +445,36 @@ const idFormat = n => (Number(n)||0).toLocaleString('id-ID');
 const clean    = s => +(String(s||'').replace(/[^0-9]/g,''))||0;
 const $id      = id => document.getElementById(id);
 
+// ===== Stok helpers (client-side reservation awareness) =====
+function stockTotal(barangId, unitId){
+  const rows = unitMap[String(barangId)] || unitMap[barangId] || [];
+  const r = rows.find(x => Number(x.unit_id) === Number(unitId));
+  return Number(r?.stok || 0);
+}
+function reservedQty(barangId, unitId, excludeIndex=null){
+  let sum = 0;
+  cart.forEach((it, idx) => {
+    if (excludeIndex !== null && idx === excludeIndex) return;
+    if (it.tipe === 'barang' && Number(it.barang_id) === Number(barangId) && Number(it.unit_id) === Number(unitId)) {
+      sum += Number(it.qty||0);
+    }
+  });
+  return sum;
+}
+function availableStock(barangId, unitId, excludeIndex=null){
+  const total = stockTotal(barangId, unitId);
+  const reserved = reservedQty(barangId, unitId, excludeIndex);
+  return Math.max(0, total - reserved);
+}
+function updateSelectedStockView(){
+  try{
+    if (pickedBarang && pickedBarang.id && pickedBarang.unit_id) {
+      const sisa = availableStock(pickedBarang.id, pickedBarang.unit_id);
+      $id('stokView').value = idFormat(sisa);
+    }
+  }catch(e){}
+}
+
 /* format uang */
 function bindMoneyInput(viewEl, onChange){
   const fmt = () => { const raw = clean(viewEl.value); viewEl.value = idFormat(raw); onChange?.(raw); };
@@ -455,8 +505,10 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
       try{ if(typeof renderBarangGrid==='function') renderBarangGrid('*'); }catch(e){}
       try{ if(typeof renderJasaGrid==='function') renderJasaGrid('*'); }catch(e){}
     } else {
-      try{ document.getElementById('unitChipsWrap')?.classList.add('d-none'); }catch(e){}
-      pickedBarang=null; pickedUnit=null; pickedJasa=null;
+      try{ hardResetSelection(true); }catch(e){
+        try{ document.getElementById('unitChipsWrap')?.classList.add('d-none'); }catch(e){}
+        pickedBarang=null; pickedUnit=null; pickedJasa=null;
+      }
     }
   }
 
@@ -480,9 +532,11 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
 
   document.getElementById('tabItem')?.addEventListener('shown.coreui.tab', ()=>{
     setHeaderMode(btnDaftarH?.classList.contains('active'));
+    try{ hardResetSelection(btnCariH && btnCariH.classList.contains('active')); }catch(e){}
   });
   document.getElementById('tabItem')?.addEventListener('shown.bs.tab', ()=>{
     setHeaderMode(btnDaftarH?.classList.contains('active'));
+    try{ hardResetSelection(btnCariH && btnCariH.classList.contains('active')); }catch(e){}
   });
 
   // ======================== GRID RENDERERS (scope IIFE) ========================
@@ -502,13 +556,16 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
     list.forEach(it=>{
       const name = (it.nama||'').replace(/</g,'&lt;');
       const thumb = it.image_url ? `<img src="${it.image_url}" alt="${name}" onerror=\"this.outerHTML='B'\">` : 'B';
-      html += `<div class="tile" data-id="${it.id}" data-name="${name}">
+      const isActive = (typeof pickedBarang==='object' && pickedBarang && Number(pickedBarang.id) === Number(it.id));
+      html += `<div class="tile${isActive?' active':''}" data-id="${it.id}" data-name="${name}">
         <div class="ico">${thumb}</div>
         <div class="flex-1"><div class="name">${name}</div></div>
       </div>`;
     });
     h(wrap, html);
     wrap.querySelectorAll('.tile').forEach(t=> t.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.tile').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
       const id = t.getAttribute('data-id'); const name=t.getAttribute('data-name');
       pickedBarang = { id: parseInt(id,10), nama: name };
       const chipsWrap = byId('unitChipsWrap'); const chips = byId('unitChips');
@@ -530,7 +587,7 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
             harga   : parseInt(btn.getAttribute('data-harga')||'0',10),
             stok    : parseInt(btn.getAttribute('data-stok')||'0',10)
           };
-          byId('stokView').value    = idFormat(pickedBarang.stok||0);
+          updateSelectedStockView();
           byId('hargaBarang').value = idFormat(pickedBarang.harga||0); // <-- auto format
         }));
         const first = chips.querySelector('.unit-chip'); if(first){ first.click(); }
@@ -550,7 +607,8 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
       const name = (it.nama||'').replace(/</g,'&lt;');
       const harga = parseInt(it.harga_per_satuan||0,10);
       const thumb = it.image_url ? `<img src="${it.image_url}" alt="${name}" onerror=\"this.outerHTML='J'\">` : 'J';
-      html += `<div class="tile" data-id="${it.id}" data-name="${name}" data-harga="${harga}">
+      const isActive = (typeof pickedJasa==='object' && pickedJasa && Number(pickedJasa.id) === Number(it.id));
+      html += `<div class="tile${isActive?' active':''}" data-id="${it.id}" data-name="${name}" data-harga="${harga}">
         <div class="ico">${thumb}</div>
         <div class="tile-content">
           <div class="name">${name}</div>
@@ -560,6 +618,8 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
     });
     h(wrap, html);
     wrap.querySelectorAll('.tile').forEach(t=> t.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.tile').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
       const id = parseInt(t.getAttribute('data-id'),10);
       const name = t.getAttribute('data-name');
       const harga = parseInt(t.getAttribute('data-harga')||'0',10);
@@ -583,42 +643,7 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
 
   const bInput=document.getElementById('barangSearch'), bResults=document.getElementById('barangResults');
   const bSelInfo=document.getElementById('barangSelectedInfo'), bSelName=document.getElementById('barangSelectedName');
-  function renderBarangResults(){
-    const q=(bInput?.value||'').toLowerCase().trim(); if(!bResults) return;
-    if(!q){ bResults.classList.add('d-none'); bResults.innerHTML=''; return; }
-    const list=(BARANGS||[]).filter(it=> (it.nama||'').toLowerCase().includes(q));
-    if(list.length===0){ bResults.classList.remove('d-none'); bResults.innerHTML='<div class="picker-empty">Tidak ada hasil</div>'; return; }
-    let html='';
-    list.forEach(it=>{
-      const name=(it.nama||'').replace(/</g,'&lt;');
-      html+=`<div class="picker-item" data-id="${it.id}" data-name="${name}"><div class="title">${name}</div></div>`;
-    });
-    bResults.classList.remove('d-none'); bResults.innerHTML=html;
-    bResults.querySelectorAll('.picker-item').forEach(el=> el.addEventListener('click',()=>{
-      const id=el.getAttribute('data-id'); const name=el.getAttribute('data-name');
-      pickedBarang={ id:parseInt(id,10), nama:name }; bSelName.textContent=name; bSelInfo.classList.remove('d-none');
-      const rows=(UNITMAP[id]||[]); const chips=document.getElementById('unitChips'); const wrap=document.getElementById('unitChipsWrap');
-      if(rows.length){
-        let cHtml=''; rows.forEach(r=> cHtml+=`<button type="button" class="unit-chip" data-unit="${r.unit_id}" data-kode="${r.unit_kode}" data-harga="${r.harga}" data-stok="${r.stok}"><strong>${(r.unit_kode||'').toUpperCase()}</strong><small class="ms-1 text-muted">Rp${(r.harga||0).toLocaleString('id-ID')}</small></button>`);
-        chips.innerHTML=cHtml; wrap.classList.remove('d-none');
-        chips.querySelectorAll('.unit-chip').forEach(btn=> btn.addEventListener('click',()=>{
-          chips.querySelectorAll('.unit-chip').forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          pickedBarang = {
-            ...(pickedBarang||{}),
-            unit_id : parseInt(btn.getAttribute('data-unit'),10),
-            unit_kode: btn.getAttribute('data-kode'),
-            harga   : parseInt(btn.getAttribute('data-harga')||'0',10),
-            stok    : parseInt(btn.getAttribute('data-stok')||'0',10)
-          };
-          document.getElementById('stokView').value  = idFormat(pickedBarang.stok||0);
-          document.getElementById('hargaBarang').value = idFormat(pickedBarang.harga||0); // <-- auto format
-        }));
-        const first=chips.querySelector('.unit-chip'); if(first){ first.click(); }
-      } else { wrap.classList.add('d-none'); }
-      bResults.classList.add('d-none');
-    }));
-  }
+  function renderBarangResults(){ try{ filterBarang(bInput.value); }catch(e){} }
   bInput?.addEventListener('input', renderBarangResults);
   document.getElementById('btnModeCariHeader')?.addEventListener('click',()=>{ setTimeout(()=> bInput?.focus(), 50); });
 
@@ -674,7 +699,16 @@ function openResultsB(){ bResults.classList.remove('d-none'); }
 function closeResultsB(){ bResults.classList.add('d-none'); bCursor=-1; }
 function renderResultsB(list){
   bResults.innerHTML=''; if(!list.length){ bResults.innerHTML='<div class="picker-empty">Tidak ada hasil.</div>'; return; }
-  list.forEach((it,i)=>{ const div=document.createElement('div'); div.className='picker-item'+(i===bCursor?' active':''); div.innerHTML=`<div class="title">${it.nama}</div>`; div.onclick=()=>selectBarang(it); bResults.appendChild(div); });
+  list.forEach((it,i)=>{
+    const rows = (unitMap[String(it.id)]||unitMap[it.id]||[]);
+    let minH=0,sumS=0; rows.forEach(r=>{ sumS+=Number(r.stok||0); minH = (minH===0? Number(r.harga||0) : Math.min(minH, Number(r.harga||0))); });
+    const div=document.createElement('div'); div.className='result-tile'+(i===bCursor?' active':'');
+    const nameSafe=(it.nama||'').replace(/</g,'&lt;');
+    const thumb = it.image_url ? `<img src="${it.image_url}" alt="${nameSafe}" onerror=\"this.outerHTML='B'\">` : 'B';
+    div.innerHTML=`<div class="ico">${thumb}</div><div class="flex-1"><div class="name">${nameSafe}</div><div class="meta">${minH>0?('mulai Rp'+minH.toLocaleString('id-ID')):'—'} • stok ${sumS.toLocaleString('id-ID')}</div></div>`;
+    div.onclick=()=>selectBarang(it);
+    bResults.appendChild(div);
+  });
 }
 function filterBarang(q){
   q=(q||'').toLowerCase();
@@ -693,15 +727,21 @@ function resetBarangPick(){
   unitChipsWrap.classList.add('d-none'); unitChipsEl.innerHTML='';
   $id('stokView').value=0; $id('hargaBarang').value=idFormat(0);
 }
-bSearch?.addEventListener('input',()=>filterBarang(bSearch.value));
+bSearch?.addEventListener('input',()=>{
+  const has = !!(bSearch.value||'').trim();
+  document.getElementById('barangClear')?.classList.toggle('d-none', !has);
+  filterBarang(bSearch.value);
+});
 bSearch?.addEventListener('keydown',(e)=>{
   if(bResults.classList.contains('d-none')) return;
   if(e.key==='ArrowDown'){e.preventDefault(); bCursor=Math.min(bCursor+1,bList.length-1); renderResultsB(bList);}
   if(e.key==='ArrowUp'){e.preventDefault();   bCursor=Math.max(bCursor-1,0);               renderResultsB(bList);}
   if(e.key==='Enter'){e.preventDefault(); if(bCursor>=0) selectBarang(bList[bCursor]);}
-  if(e.key==='Escape'){e.preventDefault(); closeResultsB();}
+  if(e.altKey && e.key==='Enter'){ e.preventDefault(); if(bCursor>=0){ selectBarang(bList[bCursor]); setTimeout(()=>document.getElementById('qtyBarang')?.focus(), 0);} }
+  if(e.key==='Escape'){e.preventDefault(); bSearch.value=''; document.getElementById('barangClear')?.classList.add('d-none'); closeResultsB();}
 });
 document.addEventListener('click',(e)=>{ if(!bResults?.contains(e.target) && e.target!==bSearch) closeResultsB(); });
+document.getElementById('barangClear')?.addEventListener('click', ()=>{ bSearch.value=''; bSearch.focus(); closeResultsB(); document.getElementById('barangClear')?.classList.add('d-none'); });
 
 /* daftar Barang (global) */
 const bGrid = $id('barangGrid');
@@ -717,7 +757,7 @@ function renderBarangGrid(letter='*'){
   }).slice(0,300);
   if(!list.length){ bGrid.innerHTML='<div class="muted p-2">Tidak ada barang.</div>'; return; }
   list.forEach(b=>{
-    const div=document.createElement('div'); div.className='tile';
+    const div=document.createElement('div'); div.className='tile' + ((typeof pickedBarang==='object' && pickedBarang && Number(pickedBarang.id)===Number(b.id)) ? ' active' : '');
     const thumb = b.image_url ? `<img src="${b.image_url}" alt="${(b.nama||'').replace(/</g,'&lt;')}" onerror=\"this.outerHTML='B'\">` : 'B';
     div.innerHTML=`<div class="ico">${thumb}</div><div class="name">${b.nama}</div>`;
     div.onclick=()=>{
@@ -733,19 +773,24 @@ function renderBarangGrid(letter='*'){
 function renderUnitChips(barangId){
   const rows=unitMap[barangId]||[]; unitChipsEl.innerHTML='';
   rows.forEach(u=>{
-    const b=document.createElement('button'); b.type='button'; b.className='unit-chip';
+    const b=document.createElement('button'); b.type='button';
+    const isActive = (pickedBarang && Number(pickedBarang.unit_id) === Number(u.unit_id));
+    b.className='unit-chip' + (isActive ? ' active' : '');
     b.dataset.unitId=u.unit_id; b.dataset.k=u.unit_kode; b.dataset.h=u.harga; b.dataset.s=u.stok;
-    b.innerHTML=`${u.unit_kode} <small>(stok ${idFormat(u.stok)})</small>`;
+    const sisa = availableStock(pickedBarang?.id||barangId, u.unit_id);
+    b.innerHTML=`${u.unit_kode} <small>(stok ${idFormat(sisa)})</small>`;
     b.onclick=()=>selectUnitChip(b); unitChipsEl.appendChild(b);
   });
   unitChipsWrap.classList.toggle('d-none', rows.length===0);
+  if(rows.length===1){ const first = unitChipsEl.querySelector('.unit-chip'); if(first){ first.click(); setTimeout(()=> document.getElementById('qtyBarang')?.focus(), 0); } }
 }
 function selectUnitChip(btn){
   unitChipsEl.querySelectorAll('.unit-chip').forEach(el=>el.classList.remove('active'));
   btn.classList.add('active');
   pickedBarang = {...(pickedBarang||{}), unit_id:+btn.dataset.unitId, unit_kode:btn.dataset.k, stok:+btn.dataset.s||0, harga:+btn.dataset.h||0 };
-  $id('stokView').value=idFormat(pickedBarang.stok||0);
+  updateSelectedStockView();
   $id('hargaBarang').value=idFormat(pickedBarang.harga||0);
+  try{ document.getElementById('qtyBarang')?.focus(); }catch(e){}
 }
 
 /* mode Jasa (global) */
@@ -832,15 +877,21 @@ function tambahBarang(){
   if(!pickedBarang || !pickedBarang.id){ alert('Pilih barang.'); return; }
   if(!pickedBarang.unit_id){ alert('Pilih unit.'); return; }
   const qty=+$id('qtyBarang').value||1, harga=clean($id('hargaBarang').value);
-  if(qty>+(pickedBarang.stok||0)){ alert('Qty melebihi stok.'); return; }
+  const avail = availableStock(pickedBarang.id, pickedBarang.unit_id);
+  if(avail <= 0){ alert('Stok habis untuk unit ini.'); return; }
+  if(harga <= 0){ alert('Harga tidak boleh 0.'); return; }
+  if(qty>avail){ alert('Qty melebihi stok tersedia. Disetel ke maksimum.'); }
+  const finalQty = Math.min(qty, avail);
   const line={tipe:'barang', barang_id:pickedBarang.id, jasa_id:null, unit_id:pickedBarang.unit_id, unit_kode:pickedBarang.unit_kode, nama:pickedBarang.nama, qty, harga, discType:'', discVal:0, discManual:false};
+  line.qty = finalQty;
   applyAutoDisc(line);
   cart.push(line);
-  renderCart(); $id('qtyBarang').value=1;
+  renderCart(); $id('qtyBarang').value=1; updateSelectedStockView(); renderUnitChips(pickedBarang.id);
 }
 function tambahJasa(){
   if(!pickedJasa || !pickedJasa.id){ alert('Pilih jasa.'); return; }
   const qty=+$id('qtyJasa').value||1, harga=clean($id('hargaJasa').value);
+  if(harga <= 0){ alert('Harga tidak boleh 0.'); return; }
   const line={tipe:'jasa', barang_id:null, jasa_id:pickedJasa.id, unit_id:null, unit_kode:null, nama:pickedJasa.nama, qty, harga, discType:'', discVal:0, discManual:false};
   applyAutoDisc(line);
   cart.push(line);
@@ -863,6 +914,13 @@ function renderCart(){
     else if(it.discType==='amount'){ dAmt = Math.min(gross, Math.max(0,it.discVal)); }
     const sub = Math.max(0, gross - dAmt); grand+=sub;
     const tr=document.createElement('tr');
+    let plusDisabled = '';
+    let maxAttr = '';
+    if(it.tipe==='barang'){
+      const avail = availableStock(it.barang_id, it.unit_id, i);
+      if(Number(it.qty||0) >= avail){ plusDisabled = 'disabled'; }
+      maxAttr = ` max="${avail}"`;
+    }
     tr.innerHTML=`
       <td><span class="badge ${it.tipe==='barang'?'text-bg-primary':'text-bg-success'} pill text-capitalize">${it.tipe}</span></td>
       <td>${it.nama}</td>
@@ -870,26 +928,28 @@ function renderCart(){
       <td class="text-end">
         <div class="qty-row">
           <button type="button" class="btn btn-outline-secondary" onclick="editQty(${i},-1)">−</button>
-          <input type="number" value="${it.qty}" min="1" class="form-control" onchange="onCellEdit(${i},'qty',this)">
-          <button type="button" class="btn btn-outline-secondary" onclick="editQty(${i},1)">+</button>
+          <input type="number" value="${it.qty}" min="1"${maxAttr} class="form-control" onchange="onCellEdit(${i},'qty',this)">
+          <button type="button" class="btn btn-outline-secondary" onclick="editQty(${i},1)" ${plusDisabled}>+</button>
         </div>
       </td>
       <td class="text-end">
-        <input type="text" value="${idFormat(it.harga)}" class="form-control text-end"
-               oninput="onMoneyEdit(${i}, this)" onblur="onMoneyEdit(${i}, this)">
+        <input type="text" value="${idFormat(it.harga)}" class="form-control text-end price-input ${Number(it.harga||0)<=0?'is-invalid-field':''}"
+               inputmode="numeric" title="Rp${idFormat(it.harga)}"
+               oninput="onPriceTyping(${i}, this)" onblur="onPriceBlur(${i}, this)">
       </td>
       <td class="text-end">
         <div class="input-group input-group-sm">
-          <input type="text" value="${it.discType==='percent' ? (Number(it.discVal)||0) : idFormat(Number(it.discVal)||0)}" class="form-control text-end"
-                 oninput="onDiscEdit(${i}, this)" placeholder="0">
+          <input type="text" value="${it.discType==='percent' ? (Number(it.discVal)||0) : idFormat(Number(it.discVal)||0)}" class="form-control text-end discount-input"
+                 inputmode="numeric" placeholder="0"
+                 oninput="onDiscTyping(${i}, this)" onblur="onDiscBlur(${i}, this)">
           <select class="form-select" onchange="onDiscTypeChange(${i}, this)">
-            <option value="" ${!it.discType?'selected':''}>—</option>
+            <option value="" ${!it.discType?'selected':''}>Pilih Diskon</option>
             <option value="amount" ${it.discType==='amount'?'selected':''}>Rp</option>
             <option value="percent" ${it.discType==='percent'?'selected':''}>%</option>
           </select>
         </div>
       </td>
-      <td class="text-end fw-semibold">${rupiah(sub)}</td>
+      <td class="text-end fw-semibold" id="rowSub_${i}" title="${rupiah(sub)}">${rupiah(sub)}</td>
       <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" onclick="hapusItem(${i})"><i class="bi bi-x-lg"></i></button></td>
     `;
     body.appendChild(tr);
@@ -899,24 +959,112 @@ function renderCart(){
       <input type="hidden" name="items[${i}][barang_id]" value="${it.barang_id ?? ''}">
       <input type="hidden" name="items[${i}][jasa_id]" value="${it.jasa_id ?? ''}">
       <input type="hidden" name="items[${i}][unit_id]" value="${it.unit_id ?? ''}">
-      <input type="hidden" name="items[${i}][jumlah]" value="${it.qty}">
-      <input type="hidden" name="items[${i}][harga_satuan]" value="${it.harga}">
-      <input type="hidden" name="items[${i}][discount_type]" value="${it.discType||''}">
-      <input type="hidden" name="items[${i}][discount_value]" value="${Number(it.discVal)||0}">
+      <input type="hidden" id="hid_qty_${i}" name="items[${i}][jumlah]" value="${it.qty}">
+      <input type="hidden" id="hid_harga_${i}" name="items[${i}][harga_satuan]" value="${it.harga}">
+      <input type="hidden" id="hid_disc_type_${i}" name="items[${i}][discount_type]" value="${it.discType||''}">
+      <input type="hidden" id="hid_disc_value_${i}" name="items[${i}][discount_value]" value="${Number(it.discVal)||0}">
     `);
   });
   $id('grandTotal').textContent = rupiah(grand);
   $id('totalTop').textContent   = rupiah(grand);
   hitungKembalian();
+  try{ updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); } }catch(e){}
 }
-function onMoneyEdit(i, el){ const v=clean(el.value); cart[i].harga=v; el.value=idFormat(v); renderCart(); }
-function editQty(i,d){ cart[i].qty=Math.max(1,(cart[i].qty||1)+d); renderCart(); }
-function onCellEdit(i,field,el){ let v=+el.value||0; if(field==='qty') v=Math.max(1,v); cart[i][field]=v; if(field==='qty' && !cart[i].discManual) applyAutoDisc(cart[i]); renderCart(); }
-function onDiscTypeChange(i, sel){ cart[i].discType = sel.value; cart[i].discManual=true; if(sel.value==='percent'){ cart[i].discVal = Math.min(100, Math.max(0, Number(cart[i].discVal||0))); } else { cart[i].discVal = Number(cart[i].discVal||0); } renderCart(); }
-function onDiscEdit(i, el){ const t=cart[i].discType||''; let v = el.value||''; cart[i].discManual=true; if(t==='percent'){ v = v.replace(/[^0-9]/g,''); cart[i].discVal = Math.min(100, Math.max(0, Number(v||0))); } else { cart[i].discVal = clean(v); } renderCart(); }
-function hapusItem(i){ cart.splice(i,1); renderCart(); }
+// ========== Input handlers dengan live update TANPA re-render penuh ==========
+function updateHiddenForRow(i){
+  const it = cart[i];
+  const hq = document.getElementById(`hid_qty_${i}`); if(hq) hq.value = it.qty;
+  const hh = document.getElementById(`hid_harga_${i}`); if(hh) hh.value = it.harga;
+  const ht = document.getElementById(`hid_disc_type_${i}`); if(ht) ht.value = it.discType||'';
+  const hv = document.getElementById(`hid_disc_value_${i}`); if(hv) hv.value = Number(it.discVal)||0;
+}
+function updateRowSubtotal(i){
+  const it = cart[i];
+  const gross = Number(it.qty||0) * Number(it.harga||0);
+  let dAmt = 0;
+  if(it.discType==='percent') dAmt = Math.floor(gross * Math.min(100, Math.max(0, Number(it.discVal||0))) / 100);
+  else if(it.discType==='amount') dAmt = Math.min(gross, Math.max(0, Number(it.discVal||0)));
+  const sub = Math.max(0, gross - dAmt);
+  const cell = document.getElementById(`rowSub_${i}`);
+  if(cell){ cell.textContent = rupiah(sub); cell.title = rupiah(sub); }
+}
+function onPriceTyping(i, el){
+  const v = clean(el.value);
+  cart[i].harga = v;
+  updateHiddenForRow(i); updateRowSubtotal(i); updateTotals();
+}
+function onPriceBlur(i, el){
+  const v = clean(el.value); cart[i].harga = v; el.value = idFormat(v);
+  updateHiddenForRow(i); updateRowSubtotal(i); updateTotals();
+}
+function editQty(i,d){
+  const it = cart[i];
+  if(it.tipe==='barang'){
+    const avail = availableStock(it.barang_id, it.unit_id, i);
+    const next = Math.max(1, Math.min(avail, (Number(it.qty||1)+d)));
+    if(d>0 && next === Number(it.qty||1)) { alert('Qty melebihi stok.'); return; }
+    it.qty = next;
+  } else {
+    it.qty = Math.max(1,(it.qty||1)+d);
+  }
+  if(!cart[i].discManual) applyAutoDisc(cart[i]);
+  renderCart(); updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); }
+}
+function onCellEdit(i,field,el){
+  let v=+el.value||0;
+  if(field==='qty'){
+    v=Math.max(1,v);
+    const it = cart[i];
+    if(it.tipe==='barang'){
+      const avail = availableStock(it.barang_id, it.unit_id, i);
+      if(v>avail){ v = avail; alert('Qty melebihi stok. Disetel ke maksimum.'); }
+    }
+  }
+  cart[i][field]=v;
+  if(field==='qty' && !cart[i].discManual) applyAutoDisc(cart[i]);
+  renderCart(); updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); }
+}
+function onDiscTypeChange(i, sel){
+  cart[i].discType = sel.value; cart[i].discManual=true;
+  if(sel.value==='percent'){
+    cart[i].discVal = Math.min(100, Math.max(0, Number(cart[i].discVal||0)));
+  } else if(sel.value==='amount') {
+    cart[i].discVal = Number(cart[i].discVal||0);
+  } else {
+    cart[i].discVal = 0;
+  }
+  updateHiddenForRow(i); updateRowSubtotal(i); updateTotals();
+}
+function onDiscTyping(i, el){
+  const t = cart[i].discType||''; let v = el.value||'';
+  cart[i].discManual=true;
+  if(t==='percent'){
+    v = v.replace(/[^0-9]/g,'');
+    cart[i].discVal = Math.min(100, Math.max(0, Number(v||0)));
+    el.value = String(cart[i].discVal);
+  } else if(t==='amount'){
+    const raw = clean(v);
+    cart[i].discVal = raw;
+    // Format ribuan langsung agar mudah dibaca saat mengetik
+    el.value = idFormat(raw);
+  } else {
+    cart[i].discVal = 0;
+  }
+  updateHiddenForRow(i); updateRowSubtotal(i); updateTotals();
+}
+function onDiscBlur(i, el){
+  const t = cart[i].discType||'';
+  if(t==='amount'){
+    el.value = idFormat(clean(el.value));
+  } else if(t==='percent'){
+    let v = String(el.value||'').replace(/[^0-9]/g,''); v = String(Math.min(100, Math.max(0, Number(v||0))));
+    el.value = v;
+  }
+  updateHiddenForRow(i); updateRowSubtotal(i); updateTotals();
+}
+function hapusItem(i){ cart.splice(i,1); renderCart(); updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); } }
 
-function kosongkanKeranjang(){ if(!confirm('Kosongkan keranjang?')) return; cart=[]; renderCart(); }
+function kosongkanKeranjang(){ if(!confirm('Kosongkan keranjang?')) return; cart=[]; renderCart(); updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); } }
 function updateTotals(){
   const itemsTotal = cart.reduce((sum,it)=>{
     const gross=it.qty*it.harga; let d=0; if(it.discType==='percent') d=Math.floor(gross*Math.min(100,Math.max(0,Number(it.discVal||0)))/100); else if(it.discType==='amount') d=Math.min(gross, Number(it.discVal||0)); return sum + Math.max(0, gross-d);
@@ -929,6 +1077,7 @@ function updateTotals(){
   $id('grandTotal').textContent=rupiah(grand);
   $id('totalTop').textContent=rupiah(grand);
   hitungKembalian();
+  updateFormValidity();
 }
 
 /* pembayaran */
@@ -944,6 +1093,8 @@ function hitungKembalian(){
   const dibayar = clean($id('dibayar').value);
   const kembali = Math.max(0, dibayar - total);
   $id('kembalianView').textContent = rupiah(kembali);
+  // Update validitas tombol simpan ketika nilai bayar/total berubah
+  updateFormValidity();
 }
 $id('btnUangPas')?.addEventListener('click', ()=>{
   if ($id('dibayar_view').disabled) return; // QRIS → nonaktif
@@ -966,6 +1117,7 @@ function onMetodeChange(){
   if (isQris){
     $id('dibayar').value = 0; $id('dibayar_view').value = idFormat(0); hitungKembalian();
   }
+  updateFormValidity();
 }
 metodeSel?.addEventListener('change', onMetodeChange);
 
@@ -1038,5 +1190,39 @@ function applyAutoDisc(line){
 }
 
 renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange(); onDiscTypeInvoice();
+// Hard reset helper: bersihkan semua selection dan highlight
+function hardResetSelection(focusSearch=false){
+  pickedBarang=null; pickedUnit=null; pickedJasa=null;
+  try{ document.querySelectorAll('#barangGrid .tile.active').forEach(el=>el.classList.remove('active')); }catch(e){}
+  try{ document.querySelectorAll('#jasaGrid .tile.active').forEach(el=>el.classList.remove('active')); }catch(e){}
+  try{ document.getElementById('unitChipsWrap')?.classList.add('d-none'); document.getElementById('unitChips').innerHTML=''; }catch(e){}
+  try{ document.getElementById('barangSelectedInfo')?.classList.add('d-none'); document.getElementById('jasaSelectedInfo')?.classList.add('d-none'); }catch(e){}
+  try{ document.getElementById('stokView').value = 0; document.getElementById('hargaBarang').value = idFormat(0); document.getElementById('hargaJasa').value = idFormat(0); }catch(e){}
+  if (focusSearch){ try{ document.getElementById('barangSearch')?.focus(); }catch(e){} }
+}
+
+// Validasi form: cegah simpan ketika ada harga 0 atau tidak ada item
+function updateFormValidity(){
+  const btn = document.getElementById('btnSimpan'); if(!btn) return;
+  const hasItems = cart.length > 0;
+  const anyZeroPrice = cart.some(it => it.tipe==='barang' || it.tipe==='jasa' ? Number(it.harga||0) <= 0 : false);
+  // Hitung total saat ini untuk aturan bayar
+  const itemsTotal = cart.reduce((sum,it)=>{
+    const gross=it.qty*it.harga; let d=0; if(it.discType==='percent') d=Math.floor(gross*Math.min(100,Math.max(0,Number(it.discVal||0)))/100); else if(it.discType==='amount') d=Math.min(gross, Number(it.discVal||0)); return sum + Math.max(0, gross-d);
+  },0);
+  const invType = ($id('discType')?.value)||'';
+  const invVal  = Number(($id('discValue')?.value)||0);
+  let invAmt=0; if(invType==='percent') invAmt=Math.floor(itemsTotal*Math.min(100,Math.max(0,invVal))/100); else if(invType==='amount') invAmt=Math.min(itemsTotal, Math.max(0,invVal));
+  const total   = Math.max(0, itemsTotal - invAmt);
+  const dibayar = clean($id('dibayar').value);
+  const method  = (document.getElementById('metodeBayar')?.value)||'cash';
+  let invalid = !hasItems || anyZeroPrice;
+  let reason = !hasItems ? 'Tambah minimal satu item.' : (anyZeroPrice ? 'Periksa: ada harga item 0.' : '');
+  if (!invalid) {
+    if (method !== 'qris' && dibayar < total) { invalid = true; reason = 'Nominal dibayar kurang dari total.'; }
+    if (method === 'qris' && dibayar > 0 && dibayar < total) { invalid = true; reason = 'Untuk QRIS, kosongkan Nominal Dibayar.'; }
+  }
+  btn.disabled = invalid; btn.title = invalid ? reason : '';
+}
 </script>
 @endsection

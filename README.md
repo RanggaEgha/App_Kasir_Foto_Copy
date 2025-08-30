@@ -86,10 +86,32 @@ Middleware: `role` (404 bila tak berhak) & `active` (paksa logout jika nonaktif)
      ```bash
      php artisan db:seed --class=Database\\Seeders\\AdminUserSeeder
      ```
-  Seeder membuat/menyetel user admin (nama: *Administrator*).
+Seeder membuat/menyetel user admin (nama: *Administrator*).
 
 - **Buat/Kelola User (Admin)**
   - Menu **Users** → buat/edit user, pilih **Role** (`admin`/`kasir`) dan **Status** (`Aktif`/`Nonaktif`).
-  - `is_active=false` akan memaksa logout user saat login (middleware `active`).
+- `is_active=false` akan memaksa logout user saat login (middleware `active`).
 
 ---
+
+## Troubleshooting Database (SQLSTATE[HY000] [2002])
+
+Jika saat login muncul error:
+
+> SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+
+Langkah pengecekan:
+
+- Pastikan MySQL/MariaDB berjalan (di Laragon: Start All).
+- Pastikan `.env` benar: `DB_HOST=127.0.0.1`, `DB_PORT` sesuai (umumnya 3306; kadang 3307 di Laragon).
+- Pastikan database ada (`DB_DATABASE`) dan user (`DB_USERNAME`/`DB_PASSWORD`) bisa akses.
+- Hapus cache config setelah ubah `.env`:
+  ```bash
+  php artisan config:clear
+  ```
+- Inisialisasi skema:
+  ```bash
+  php artisan migrate --seed
+  ```
+
+Aplikasi ini juga dilengkapi middleware kesehatan database. Jika DB offline, aplikasi menampilkan halaman ramah pengguna (503) alih-alih error mentah dan akan mencoba muat ulang berkala.

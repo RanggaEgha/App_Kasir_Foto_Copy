@@ -57,11 +57,25 @@ class StockLowNotification extends Notification
         $u   = $p->unit?->kode ?? '-';
 
         $subject = $this->severity === 'out' ? '⛔ Stok habis' : '⚠️ Stok menipis';
+        $accent  = $this->severity === 'out' ? '#ef4444' : '#f59e0b';
+
+        $details = [
+            ['label' => 'Barang', 'value' => e($brg)],
+            ['label' => 'Unit',   'value' => e($u)],
+            ['label' => 'Sisa',   'value' => (int) $p->stok],
+        ];
 
         return (new MailMessage)
             ->subject($subject)
-            ->line("Barang : {$brg}")
-            ->line("Unit   : {$u}")
-            ->line('Sisa   : '.(int) $p->stok);
+            ->view('emails.notification', [
+                'subject'       => $subject,
+                'title'         => $subject,
+                'intro'         => $this->severity === 'out'
+                    ? 'Stok salah satu item telah habis.'
+                    : 'Stok salah satu item menipis.',
+                'details_title' => 'Detail Stok',
+                'details'       => $details,
+                'accent'        => $accent,
+            ]);
     }
 }

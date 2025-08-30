@@ -59,9 +59,11 @@ class BarangUnitPriceObserver
             // 1) simpan di database untuk panel
             $admin->notify($notif);
 
-            // 2) kirim email HANYA ke ADMIN_EMAIL (on-demand)
+            // 2) kirim email ke ADMIN_EMAIL jika berbeda dengan email admin aktif (hindari dobel)
             if ($to = config('alerts.email_to')) {
-                \Notification::route('mail', $to)->notify($notif);
+                if (strcasecmp(trim($to), trim((string)$admin->email)) !== 0) {
+                    \Notification::route('mail', $to)->notify($notif);
+                }
             }
         } catch (\Throwable $e) {
             report($e);

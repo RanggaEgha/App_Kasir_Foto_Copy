@@ -193,10 +193,10 @@
       @php
         $status         = $transaksi->status ?? 'posted';
         $paymentStatus  = $transaksi->payment_status ?? 'unpaid';
-        $payClass       = ['paid'=>'success','partial'=>'warning','unpaid'=>'secondary'][$paymentStatus] ?? 'secondary';
+        $payClass       = ['paid'=>'success','partial'=>'warning','unpaid'=>'secondary','free'=>'info'][$paymentStatus] ?? 'secondary';
 
         $statusId = fn($s) => match($s){ 'draft'=>'Draf','posted'=>'Diposting','void'=>'Dibatalkan', default=>ucfirst((string)$s) };
-        $payId    = fn($s) => match($s){ 'paid'=>'Lunas','partial'=>'Sebagian (parsial)','unpaid'=>'Belum dibayar', default=>ucfirst((string)$s) };
+        $payId    = fn($s) => match($s){ 'paid'=>'Lunas','partial'=>'Sebagian (parsial)','unpaid'=>'Belum dibayar','free'=>'Gratis', default=>ucfirst((string)$s) };
         $methodId = fn($m) => match($m){ 'cash'=>'Tunai','transfer'=>'Transfer','qris'=>'QRIS', default=>ucfirst((string)$m) };
 
         $refundSum = (int) ($transaksi->payments?->where('direction','out')->sum('amount') ?? 0);
@@ -235,7 +235,7 @@
           @if(!empty($transaksi->metode_bayar))
           <tr>
             <th>Metode Bayar</th>
-            <td>{{ $methodId($transaksi->metode_bayar) }}</td>
+            <td>{{ $paymentStatus==='free' ? 'Gratis' : $methodId($transaksi->metode_bayar) }}</td>
           </tr>
           @endif
 

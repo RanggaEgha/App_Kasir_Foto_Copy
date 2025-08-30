@@ -38,11 +38,23 @@ class BelowCostSaleNotification extends Notification
         $i    = $this->item->loadMissing('barang','unit','transaksi');
         $name = $i->barang?->nama ?? '—';
         $unit = $i->unit?->kode ?? '—';
+        $subject = '⚠️ Penjualan di bawah HPP';
+
         return (new MailMessage)
-            ->subject('⚠️ Penjualan di bawah HPP')
-            ->line("Transaksi: #{$i->transaksi_id}")
-            ->line("Barang   : {$name} ({$unit})")
-            ->line('Harga    : Rp'.number_format((float)$i->harga,0,',','.'))
-            ->line('HPP      : Rp'.number_format($this->hpp,0,',','.'));
+            ->subject($subject)
+            ->view('emails.notification', [
+                'subject'       => $subject,
+                'title'         => 'Penjualan di bawah HPP',
+                'intro'         => 'Ditemukan transaksi dengan harga jual di bawah HPP.',
+                'details_title' => 'Detail Transaksi',
+                'details'       => [
+                    ['label'=>'Transaksi', 'value'=> '#'.$i->transaksi_id],
+                    ['label'=>'Barang',    'value'=> e($name)],
+                    ['label'=>'Unit',      'value'=> e($unit)],
+                    ['label'=>'Harga',     'value'=> 'Rp'.number_format((float)$i->harga,0,',','.')],
+                    ['label'=>'HPP',       'value'=> 'Rp'.number_format($this->hpp,0,',','.')],
+                ],
+                'accent'        => '#f59e0b',
+            ]);
     }
 }

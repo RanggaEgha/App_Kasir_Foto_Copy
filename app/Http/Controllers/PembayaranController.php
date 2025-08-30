@@ -83,7 +83,8 @@ class PembayaranController extends Controller
             'items.*.jasa_id'      => ['nullable','integer','min:1','required_if:items.*.tipe_item,jasa'],
             'items.*.unit_id'      => ['nullable','integer','required_if:items.*.tipe_item,barang'],
             'items.*.jumlah'       => ['required','integer','min:1'],
-            'items.*.harga_satuan' => ['required','integer','min:0'],
+            // Harga wajib diisi dan > 0 untuk mencegah transaksi tanpa harga
+            'items.*.harga_satuan' => ['required','integer','min:1'],
             'items.*.discount_type'=> ['nullable','in:percent,amount'],
             'items.*.discount_value'=> ['nullable','integer','min:0'],
         ],[
@@ -177,6 +178,9 @@ class PembayaranController extends Controller
                     if ($iDiscAuto > $iDiscManual) { $iType = $iTypeAuto; $iVal = $iValAuto; $iDisc = $iDiscAuto; }
                     else { $iType = $iTypeManual; $iVal = $iValManual; $iDisc = $iDiscManual; }
                     $sub = max(0, $gross - $iDisc);
+                    if ($harga <= 0) {
+                        throw new \Exception('Harga item tidak boleh 0.');
+                    }
                     $itemDiscSum += $iDisc;
                     $grand += $sub;
 
@@ -275,13 +279,30 @@ class PembayaranController extends Controller
 
                 // 3) Finalisasi header
                 $dibayar = (int) $data['dibayar'];
+
+                // Wajib lunas untuk CASH/TRANSFER; QRIS harus 0 saat create (dibayar via callback)
+                $method = $data['metode_bayar'];
+                if (in_array($method, ['cash','transfer'], true)) {
+                    if ($dibayar < $grandNet) {
+                        throw new \Exception('Nominal dibayar kurang dari total. Lunasi penuh atau gunakan QRIS.');
+                    }
+                } elseif ($method === 'qris') {
+                    if ($dibayar > 0 && $dibayar < $grandNet) {
+                        throw new \Exception('Untuk QRIS, kosongkan Nominal Dibayar saat membuat transaksi.');
+                    }
+                }
+                // Tentukan status bayar: khususkan FREE jika total 0
+                $paymentStatus = $grandNet === 0
+                    ? 'free'
+                    : ($dibayar >= $grandNet ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'));
+
                 $trx->update([
                     'status'         => 'posted',
                     'posted_at'      => now(),
                     'total_harga'    => $grandNet,
                     'dibayar'        => $dibayar,
                     'kembalian'      => max(0, $dibayar - $grandNet),
-                    'payment_status' => $dibayar >= $grandNet ? 'paid' : ($dibayar > 0 ? 'partial' : 'unpaid'),
+                    'payment_status' => $paymentStatus,
                     'discount_type'  => $invType,
                     'discount_value' => $invVal,
                     'discount_amount'=> $invDiscTotal,

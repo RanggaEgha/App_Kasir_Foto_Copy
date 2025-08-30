@@ -19,6 +19,9 @@
   /* Cart table */
   .table-cart thead{background:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)}
   .table-cart td,.table-cart th{vertical-align:middle}
+  /* Nama: 1 baris + ellipsis + tooltip */
+  .table-cart .td-name{max-width:260px}
+  .table-cart .td-name .name-text{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .cart-table-wrap{max-height:360px; overflow:auto}
   /* Samakan scrollbar keranjang dengan grid barang/jasa */
   .cart-table-wrap::-webkit-scrollbar{ width:8px; height:8px; }
@@ -438,12 +441,15 @@ let cart = [];
 let pickedBarang = null;
 let pickedUnit   = null;
 let pickedJasa   = null;
+// (animasi dinonaktifkan)
 
 /* helpers */
 const rupiah   = n => 'Rp' + (Number(n)||0).toLocaleString('id-ID');
 const idFormat = n => (Number(n)||0).toLocaleString('id-ID');
 const clean    = s => +(String(s||'').replace(/[^0-9]/g,''))||0;
 const $id      = id => document.getElementById(id);
+const esc      = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// mergeMode dihilangkan; hanya Strict yang berlaku
 
 // ===== Stok helpers (client-side reservation awareness) =====
 function stockTotal(barangId, unitId){
@@ -538,6 +544,8 @@ const QC_DEFAULT = [1000,2000,5000,10000,20000,50000,100000,200000];
     setHeaderMode(btnDaftarH?.classList.contains('active'));
     try{ hardResetSelection(btnCariH && btnCariH.classList.contains('active')); }catch(e){}
   });
+
+  // Merge mode handler dihilangkan; Strict selalu aktif
 
   // ======================== GRID RENDERERS (scope IIFE) ========================
   const BARANGS = @json($barangs ?? []);
@@ -885,6 +893,24 @@ function tambahBarang(){
   const line={tipe:'barang', barang_id:pickedBarang.id, jasa_id:null, unit_id:pickedBarang.unit_id, unit_kode:pickedBarang.unit_kode, nama:pickedBarang.nama, qty, harga, discType:'', discVal:0, discManual:false};
   line.qty = finalQty;
   applyAutoDisc(line);
+  // Gabungkan Strict: tipe, barang_id, unit_id, harga, discType, discVal
+  for (let i=0;i<cart.length;i++){
+    const it = cart[i];
+    const same = it.tipe==='barang' && it.barang_id===line.barang_id && it.unit_id===line.unit_id
+      && Number(it.harga||0)===Number(line.harga||0)
+      && (it.discType||'')===(line.discType||'') && Number(it.discVal||0)===Number(line.discVal||0);
+    if(same){
+      const maxAdd = availableStock(line.barang_id, line.unit_id, i);
+      if (maxAdd <= 0) { alert('Stok habis untuk unit ini.'); return; }
+      const add = Math.min(line.qty, maxAdd);
+      if (add < line.qty) alert('Qty melebihi stok. Disetel ke maksimum.');
+      it.qty = Number(it.qty||0) + add;
+      if(!it.discManual) applyAutoDisc(it);
+      renderCart(); $id('qtyBarang').value=1; updateSelectedStockView(); renderUnitChips(pickedBarang.id);
+      return;
+    }
+  }
+  // Tidak ada yang bisa digabung → baris baru
   cart.push(line);
   renderCart(); $id('qtyBarang').value=1; updateSelectedStockView(); renderUnitChips(pickedBarang.id);
 }
@@ -894,6 +920,19 @@ function tambahJasa(){
   if(harga <= 0){ alert('Harga tidak boleh 0.'); return; }
   const line={tipe:'jasa', barang_id:null, jasa_id:pickedJasa.id, unit_id:null, unit_kode:null, nama:pickedJasa.nama, qty, harga, discType:'', discVal:0, discManual:false};
   applyAutoDisc(line);
+  // Gabungkan Strict: tipe, jasa_id, harga, discType, discVal
+  for (let i=0;i<cart.length;i++){
+    const it = cart[i];
+    const same = it.tipe==='jasa' && it.jasa_id===line.jasa_id
+      && Number(it.harga||0)===Number(line.harga||0)
+      && (it.discType||'')===(line.discType||'') && Number(it.discVal||0)===Number(line.discVal||0);
+    if(same){
+      it.qty = Number(it.qty||0) + Number(line.qty||0);
+      if(!it.discManual) applyAutoDisc(it);
+      renderCart(); $id('qtyJasa').value=1;
+      return;
+    }
+  }
   cart.push(line);
   renderCart(); $id('qtyJasa').value=1;
 }
@@ -923,7 +962,7 @@ function renderCart(){
     }
     tr.innerHTML=`
       <td><span class="badge ${it.tipe==='barang'?'text-bg-primary':'text-bg-success'} pill text-capitalize">${it.tipe}</span></td>
-      <td>${it.nama}</td>
+      <td class="td-name" title="${esc(it.nama)}"><span class="name-text">${esc(it.nama)}</span></td>
       <td>${it.tipe==='barang'?(it.unit_kode||'-'):'-'}</td>
       <td class="text-end">
         <div class="qty-row">
@@ -952,7 +991,7 @@ function renderCart(){
       <td class="text-end fw-semibold" id="rowSub_${i}" title="${rupiah(sub)}">${rupiah(sub)}</td>
       <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" onclick="hapusItem(${i})"><i class="bi bi-x-lg"></i></button></td>
     `;
-    body.appendChild(tr);
+  body.appendChild(tr);
 
     hidden.insertAdjacentHTML('beforeend',`
       <input type="hidden" name="items[${i}][tipe_item]" value="${it.tipe}">
@@ -966,7 +1005,7 @@ function renderCart(){
     `);
   });
   $id('grandTotal').textContent = rupiah(grand);
-  $id('totalTop').textContent   = rupiah(grand);
+  $id('totalTop').textContent = rupiah(grand);
   hitungKembalian();
   try{ updateSelectedStockView(); if(pickedBarang?.id){ renderUnitChips(pickedBarang.id); } }catch(e){}
 }
@@ -1074,8 +1113,8 @@ function updateTotals(){
   let invAmt=0; if(invType==='percent'){ invAmt=Math.floor(itemsTotal*Math.min(100,Math.max(0,invVal))/100); } else if(invType==='amount'){ invAmt=Math.min(itemsTotal, Math.max(0,invVal)); }
   const grand = Math.max(0, itemsTotal - invAmt);
   $id('discAmountPreview').textContent = rupiah(invAmt);
-  $id('grandTotal').textContent=rupiah(grand);
-  $id('totalTop').textContent=rupiah(grand);
+  $id('grandTotal').textContent = rupiah(grand);
+  $id('totalTop').textContent   = rupiah(grand);
   hitungKembalian();
   updateFormValidity();
 }
@@ -1190,7 +1229,6 @@ function applyAutoDisc(line){
 }
 
 renderBarangGrid('*'); renderJasaGrid('*'); renderCart(); onMetodeChange(); onDiscTypeInvoice();
-// Hard reset helper: bersihkan semua selection dan highlight
 function hardResetSelection(focusSearch=false){
   pickedBarang=null; pickedUnit=null; pickedJasa=null;
   try{ document.querySelectorAll('#barangGrid .tile.active').forEach(el=>el.classList.remove('active')); }catch(e){}

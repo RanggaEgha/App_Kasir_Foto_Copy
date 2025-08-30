@@ -94,6 +94,42 @@ class PembayaranController extends Controller
         ]);
 
         $userId  = auth()->id();
+        
+        // Dedupe items (Strict) di server untuk keamanan
+        if (isset($data['items']) && is_array($data['items'])) {
+            $merged = [];
+            foreach ($data['items'] as $row) {
+                $tipe  = $row['tipe_item'] ?? 'barang';
+                $bid   = (int)($row['barang_id'] ?? 0);
+                $jid   = (int)($row['jasa_id'] ?? 0);
+                $uid   = (int)($row['unit_id'] ?? 0);
+                $qty   = (int)($row['jumlah'] ?? 0);
+                $harga = (int)($row['harga_satuan'] ?? 0);
+                $dt    = $row['discount_type'] ?? '';
+                $dv    = (int)($row['discount_value'] ?? 0);
+
+                // kunci Strict saja
+                $key = $tipe === 'barang'
+                    ? "b:{$bid}:u:{$uid}:h:{$harga}:dt:{$dt}:dv:{$dv}"
+                    : "j:{$jid}:h:{$harga}:dt:{$dt}:dv:{$dv}";
+
+                if (!isset($merged[$key])) {
+                    $merged[$key] = [
+                        'tipe_item'      => $tipe,
+                        'barang_id'      => $tipe==='barang' ? $bid : null,
+                        'jasa_id'        => $tipe==='jasa'   ? $jid : null,
+                        'unit_id'        => $tipe==='barang' ? $uid : null,
+                        'jumlah'         => max(0, $qty),
+                        'harga_satuan'   => $harga,
+                        'discount_type'  => $dt ?: null,
+                        'discount_value' => $dv,
+                    ];
+                } else {
+                    $merged[$key]['jumlah'] = max(0, (int)$merged[$key]['jumlah'] + $qty);
+                }
+            }
+            $data['items'] = array_values($merged);
+        }
         $shiftId = ($data['metode_bayar'] === 'cash')
             ? KasirShift::openBy($userId)->value('id')
             : null;

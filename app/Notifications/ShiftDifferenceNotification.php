@@ -29,11 +29,12 @@ class ShiftDifferenceNotification extends Notification
 
     public function toMail($n): MailMessage {
         $s = $this->shift;
+        $nama = $s->user?->name ?? '—';
         return (new MailMessage)
-            ->subject('⚠️ Selisih kas saat tutup shift')
-            ->line("Shift #{$s->id} oleh user #{$s->user_id}")
-            ->line('Expected: Rp'.number_format((int)$s->expected_cash,0,',','.'))
-            ->line('Closing : Rp'.number_format((int)$s->closing_cash,0,',','.'))
-            ->line('Selisih : Rp'.number_format((int)$s->difference,0,',','.'));
+            ->subject('Selisih kas saat tutup shift')
+            ->line("Shift #{$s->id} oleh {$nama}")
+            ->line('Kas Ekspektasi: Rp'.number_format((int)$s->expected_cash,0,',','.'))
+            ->line('Kas Akhir: Rp'.number_format((int)$s->closing_cash,0,',','.'))
+            ->line('Selisih: Rp'.number_format((int)$s->difference,0,',','.'));
     }
 }

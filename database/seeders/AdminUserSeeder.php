@@ -15,7 +15,7 @@ class AdminUserSeeder extends Seeder
 
         User::updateOrCreate(
             ['email' => $email],
-            ['name' => 'Administrator', 'email' => $email, 'password' => Hash::make($pass)]
+            ['name' => 'Administrator', 'email' => $email, 'password' => Hash::make($pass), 'role' => 'admin', 'is_active' => true]
         );
     }
 }

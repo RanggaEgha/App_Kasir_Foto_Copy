@@ -209,7 +209,6 @@
     {{-- Filter --}}
     <form class="row g-2 mb-3 filter-wrap" method="get">
       <div class="col-12 col-md-auto">
-  <label class="form-label small text-muted mb-1">Status</label>
   <div class="select-pill">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
     <select name="status" class="select-soft">
@@ -222,7 +221,6 @@
   </div>
 </div>
       <div class="col-12 col-md-auto">
-  <label class="form-label small text-muted mb-1">Status Bayar</label>
   <div class="select-pill">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/><circle cx="7" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="17" cy="12" r="1"/></svg>
     <select name="payment" class="select-soft">
